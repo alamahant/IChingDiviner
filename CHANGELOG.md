@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.3 - 2026-05-27
+- Added Journal System - Automatically records every saved reading with date browsing, personal notes, and one-click reloading of past divinations
+- Added Social Sharing - Capture and share your readings as images to social media, email, or save locally
+- Enhanced Hexagram Meanings - Wilhelm translation now displays in beautifully formatted HTML with colored sections, improved typography, and full text zoom support (Ctrl+mouse wheel)
+- Added Import Physical Toss mode - Manually flip coins to record real physical I Ching tosses (inspired by a feature request from [jonahmondragon](https://github.com/jonahmondragon))
+- Improved deck selector with centered text and better visual feedback
+- Various UI polish and bug fixes
+
+---
+
 ## 1.0.2 - 2026-03-31
 - Added Noto Serif TC font for proper Chinese character display across all platforms
 - Replaced generic coin symbols with beautiful SVG coins featuring traditional Chinese calligraphy

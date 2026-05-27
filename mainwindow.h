@@ -31,6 +31,8 @@
 #include<QUrl>
 #include<QSettings>
 #include <QSoundEffect>
+#include"journaldialog.h"
+#include"socialshare.h"
 
 class MainWindow : public QMainWindow
 {
@@ -39,6 +41,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 private slots:
     void onAutoTossClicked();
     void onTossClicked();
@@ -121,6 +124,7 @@ private slots:
     bool downloadDataset();
     void showDeckImportGuide();
     void showAIConfigGuide();
+    void loadDivinationFromFile(const QString& filePath);
 
 private:
     QAction* hideLabelsAction;
@@ -133,6 +137,22 @@ private:
 public:
     static bool loadChineseFont();
 
+// import physical
+private:
+    bool importModeActive = false;
+    QPushButton* importModeButton;
+
+private slots:
+    void onImportModeToggled(bool checked);
+    void importPhysicalToss();
+    //social and sharing
+    void onShareClicked();
+
+private:
+    SocialShare* m_socialShare;
+    JournalDialog* journalDialog = nullptr;
+    QPushButton* openJournalButton;
+    void setupShareButton();
 
 };
 

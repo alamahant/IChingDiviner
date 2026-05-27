@@ -13,6 +13,11 @@ Application Icons and Favicons
 ------------------------------
 Icons created for IChingDiviner are provided under the same GPL-3.0 license as the application.
 
+Feature Ideas and Contributions
+-------------------------------
+- Import Physical Toss mode concept inspired by a feature request from jonahmondragon
+  https://github.com/jonahmondragon
+
 Sound Effects:
 - Coin toss sound by floraphonic from Pixabay
   https://pixabay.com/sound-effects/multi-coin-payout-4-213722/

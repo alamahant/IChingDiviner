@@ -10,6 +10,8 @@ const QString appDirPath = QStandardPaths::writableLocation(QStandardPaths::AppD
 
 const QString decksDirPath = appDirPath + "/decks";
 const QString saveDirPath = appDirPath + "/saved";
+const QString journalDirPath = appDirPath + "/journal";
+const QString screenshotsDirPath = appDirPath + "/screenshots";
 
 
 int tarotLabelHeight = 450; // def 450

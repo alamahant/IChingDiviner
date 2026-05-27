@@ -27,6 +27,8 @@
 #include<QPixmap>
 #include<QtSvg/QSvgRenderer>
 #include<QFontDatabase>
+#include"journalmanager.h"
+#include"socialsharedialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -34,6 +36,8 @@ MainWindow::MainWindow(QWidget *parent)
     , aiManager(new MistralAPI(this))
     , modelDialog(new ModelSelectorDialog(this))
     , mouseTimer(new QTimer(this))
+    , journalDialog(new JournalDialog(this))
+    , m_socialShare(new SocialShare(this))
 
 {
     setWindowTitle("I-Ching Diviner");
@@ -67,6 +71,11 @@ MainWindow::MainWindow(QWidget *parent)
     playSoundsAction->setChecked(isPlaySounds);
     if(isPlaySounds) coinSound->play();
 
+    setupShareButton();
+    connect(journalDialog, &JournalDialog::loadReadingRequested, this, [this](const QString& fileName){
+        loadDivinationFromFile(fileName);
+    });
+
 }
 
 MainWindow::~MainWindow()
@@ -93,14 +102,15 @@ void MainWindow::setupUI()
     QHBoxLayout *coinsLayout = new QHBoxLayout(coinDisplayWidget);
     coinsLayout->setContentsMargins(10, 10, 10, 10);
     coinsLayout->setSpacing(10);
-    /*
-    coinLabel1 = new QLabel("●");
-    coinLabel2 = new QLabel("●");
-    coinLabel3 = new QLabel("●");
-*/
+
     coinLabel1 = new QLabel();
     coinLabel2 = new QLabel();
     coinLabel3 = new QLabel();
+
+    coinLabel1->installEventFilter(this);
+    coinLabel2->installEventFilter(this);
+    coinLabel3->installEventFilter(this);
+
     resetCoins();
 
     QFont coinFont;
@@ -125,28 +135,11 @@ void MainWindow::setupUI()
 
 #endif
 
-    /*
-    coinFont.setPointSize(150); // was 120
-    coinLabel1->setFont(coinFont);
-    coinLabel2->setFont(coinFont);
-    coinLabel3->setFont(coinFont);
-
-    coinLabel1->setFixedHeight(180); // was 90
-    coinLabel2->setFixedHeight(180);
-    coinLabel3->setFixedHeight(180);
-    */
 
     coinLabel1->setAlignment(Qt::AlignCenter);
     coinLabel2->setAlignment(Qt::AlignCenter);
     coinLabel3->setAlignment(Qt::AlignCenter);
 
-    /*
-    QPalette coinPalette;
-    coinPalette.setColor(QPalette::WindowText, QColor(255, 215, 0));
-    coinLabel1->setPalette(coinPalette);
-    coinLabel2->setPalette(coinPalette);
-    coinLabel3->setPalette(coinPalette);
-    */
 
     coinsLayout->addWidget(coinLabel1);
     coinsLayout->addWidget(coinLabel2);
@@ -236,6 +229,7 @@ void MainWindow::setupUI()
     topSectionLayout->setContentsMargins(0, 0, 0, 0);
     topSectionLayout->setSpacing(5);
     topSectionLayout->addWidget(coinDisplayWidget, 1);
+    //topSectionLayout->addSpacing(15);
     topSectionLayout->addLayout(buttonsLayout);
 
     // Create bottom section
@@ -255,21 +249,60 @@ void MainWindow::setupUI()
     splitter->setChildrenCollapsible(false);
 
     mainLayout->addWidget(splitter);
-    meaningDock = new QDockWidget("Hexagram Meaning", this);
+
+    meaningDock = new QDockWidget("Controls", this);
     meaningDock->setAllowedAreas(Qt::RightDockWidgetArea | Qt::LeftDockWidgetArea);
-
-
     meaningDock->setFeatures(QDockWidget::DockWidgetMovable |
                              QDockWidget::DockWidgetFloatable |
                              QDockWidget::DockWidgetClosable);
-
     meaningDock->setMinimumSize(0, 0);
 
-    meaningTextEdit = new QTextEdit(meaningDock);
+    // Create container widget for dock contents
+    QWidget *dockContainer = new QWidget();
+    QVBoxLayout *dockLayout = new QVBoxLayout(dockContainer);
+
+    // Import Physical Toss button
+    importModeButton = new QPushButton("Import Physical Toss", this);
+    importModeButton->setToolTip(
+        "Toggle to manually flip coins for physical I Ching tosses.\n\n"
+        "When ON:\n"
+        "- Click on each coin to flip it (heads/tails)\n"
+        "- 'Toss' button becomes 'Set Result'\n"
+        "- Click 'Set Result' to record the current coin state\n\n"
+        "Perfect for importing real physical coin tosses!"
+    );
+    importModeButton->setCheckable(true);
+    importModeButton->setChecked(false);
+    connect(importModeButton, &QPushButton::toggled, this, &MainWindow::onImportModeToggled);
+    dockLayout->addWidget(importModeButton);
+
+    // Journal button
+    openJournalButton = new QPushButton("Journal", this);
+    openJournalButton->setToolTip("Open the journal");
+    connect(openJournalButton, &QPushButton::clicked, this, [this](){
+        journalDialog->refreshForDate(QDate::currentDate());
+        journalDialog->show();
+        journalDialog->raise();
+    });
+    dockLayout->addWidget(openJournalButton);
+
+    QLabel* meaningsLabel = new QLabel("Hexagram Meanings");
+    meaningsLabel->setToolTip("Ctrl+mouse wheel to zoom in/out");
+
+    dockLayout->addWidget(meaningsLabel);
+
+    // Meaning text edit
+    meaningTextEdit = new QTextEdit();
     meaningTextEdit->setAcceptRichText(true);
     meaningTextEdit->setReadOnly(true);
-    meaningDock->setWidget(meaningTextEdit);
+    //meaningTextEdit->setToolTip("Ctrl+mouse wheel to zoom in/out");
+    dockLayout->addWidget(meaningTextEdit);
+
+    // Set the container as the dock widget's content
+    meaningDock->setWidget(dockContainer);
+
     addDockWidget(Qt::RightDockWidgetArea, meaningDock);
+
 
     // --- LEFT DOCK: Controls & AI Interpretation ---
     controlDock = new QDockWidget("Controls", this);
@@ -332,6 +365,7 @@ void MainWindow::setupUI()
     connect(aiPredictionButton, &QPushButton::clicked, this, &MainWindow::gatAiInterpretation);
     controlLayout->addWidget(aiPredictionButton);
 
+
     // AI Interpretation section
     QLabel *aiLabel = new QLabel("AI Interpretation");
     aiLabel->setAlignment(Qt::AlignCenter);
@@ -373,9 +407,112 @@ void MainWindow::setupDarkTheme()
 
 
     qApp->setPalette(darkPalette);
+    /*
     qApp->setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }"
                         //"QTextEdit { background-color:  #1a1a1a; color: white; }"
                         );
+    */
+    qApp->setStyleSheet(
+        "QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }"
+
+        /* All buttons - consistent height */
+        "QPushButton {"
+        "    min-height: 24px;"
+        "    max-height: 24px;"
+        "    padding: 2px 2px;"
+        "}"
+
+        /* Hover effect for all buttons */
+        "QPushButton:hover {"
+        "    background-color: #3a6ea5;"
+        "    border: 1px solid #6ea8dc;"
+        "}"
+
+        /* Pressed effect */
+        "QPushButton:pressed {"
+        "    background-color: #1e4a76;"
+        "}"
+
+        /* Specific button - Set Question (make it stand out) */
+        "QPushButton#openQuestionDialogButton {"
+        "    background-color: #2a5f8a;"
+        "    font-weight: bold;"
+        "}"
+
+        "QPushButton#openQuestionDialogButton:hover {"
+        "    background-color: #3a7aaa;"
+        "}"
+
+        /* Shuffle/Enchanted Coins button - checkable state */
+        "QPushButton#shuffleButton:checked {"
+        "    background-color: #1e4a76;"
+        "    border: 1px solid #6ea8dc;"
+        "}"
+
+        /* AI Interpretation button - special styling */
+        "QPushButton#aiPredictionButton {"
+        "    background-color: #4a6a3a;"
+        "    font-weight: bold;"
+        "}"
+
+        "QPushButton#aiPredictionButton:hover {"
+        "    background-color: #5a8a4a;"
+        "}"
+
+        /* Combo box styling */
+        "QComboBox {"
+        "    min-height: 26px;"
+        "    max-height: 26px;"
+        "    padding: 2px 4px;"
+        "}"
+
+        "QComboBox:hover {"
+        "    border: 1px solid #6ea8dc;"
+        "}"
+
+        /* Group box styling */
+        "QGroupBox {"
+        "    font-weight: bold;"
+        "    border: 1px solid #555;"
+        "    margin-top: 10px;"
+        "    padding-top: 10px;"
+        "}"
+
+        "QGroupBox::title {"
+        "    subcontrol-origin: margin;"
+        "    left: 10px;"
+        "    padding: 0 5px 0 5px;"
+        "}"
+
+        /* Splitter handle - make it thicker and visible */
+        "QSplitter::handle {"
+        //"    background-color: #4a4a4a;"
+        "    height: 6px;"
+        "    width: 6px;"
+        "}"
+
+        "QSplitter::handle:hover {"
+        //"    background-color: #6ea8dc;"
+        "}"
+
+        "QSplitter::handle:pressed {"
+        //"    background-color: #2a6a9a;"
+        "}"
+
+        /* Import Physical Toss button - checked state */
+
+        "QPushButton::checked {"
+        "    background-color: #6a4e3a;"
+        "    border: 2px solid #ffaa66;"
+        "    font-weight: bold;"
+        "}"
+        ""
+        "QPushButton::checked:hover {"
+        "    background-color: #7a5e4a;"
+        "    border: 2px solid #ffcc88;"
+        "}"
+
+    );
 
 }
 
@@ -398,28 +535,7 @@ void MainWindow::onAutoTossClicked()
 
 }
 
-/*
-void MainWindow::displayCoinResults(const QList<int> &coinResults)
-{
-    if (coinResults.size() >= 3) {
-        QStringList coinFaces = {"○", "●"};
-        coinLabel1->setText(coinFaces[coinResults[0]]);
-        coinLabel2->setText(coinFaces[coinResults[1]]);
-        coinLabel3->setText(coinFaces[coinResults[2]]);
 
-
-        //
-        // Ensure the golden color is applied
-        QPalette coinPalette;
-        coinPalette.setColor(QPalette::WindowText, QColor(255, 215, 0)); // Vibrant gold
-        coinLabel1->setPalette(coinPalette);
-        coinLabel2->setPalette(coinPalette);
-        coinLabel3->setPalette(coinPalette);
-        //
-
-    }
-}
-*/
 
 void MainWindow::displayCoinResults(const QList<int> &coinResults)
 {
@@ -454,13 +570,6 @@ void MainWindow::onResetClicked()
 {
 
     // Reset coin display
-
-    /*
-    coinLabel1->setText("●");
-    coinLabel2->setText("●");
-    coinLabel3->setText("●");
-    */
-
    resetCoins();
 
     // Reset hexagram displays
@@ -476,43 +585,20 @@ void MainWindow::onResetClicked()
 
     // Reset IChing state
     iching->reset();
+
+    // Reset import mode coin states if active
+    if (importModeActive) {
+        resetCoins();
+        for (QLabel* coin : {coinLabel1, coinLabel2, coinLabel3}) {
+            coin->setProperty("isHeads", false);
+        }
+    }
+    currentQuestion = QString();
+    openQuestionDialogButton->setToolTip(QString("Pose a question to be forwarded to AI"));
+
 }
 
 /*
-void MainWindow::loadHexagramMeanings()
-{
-    QFile file(":/files/hex-meanings.txt");
-
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return;
-    }
-
-    QTextStream in(&file);
-    QString content = in.readAll();
-    file.close();
-
-    // Split the content by "index" which marks the start of each hexagram
-    QStringList hexagrams = content.split("index", Qt::SkipEmptyParts);
-
-    // Process each hexagram section
-    for (const QString &hexText : hexagrams) {
-        // Extract the hexagram number from the first line
-        QStringList lines = hexText.trimmed().split('\n');
-        if (lines.isEmpty()) continue;
-
-        QString firstLine = lines.first();
-        QRegularExpression re("^(\\d+)\\.");
-        QRegularExpressionMatch match = re.match(firstLine);
-
-        if (match.hasMatch()) {
-            int hexNumber = match.captured(1).toInt();
-            hexagramMeanings[hexNumber] = hexText.trimmed();
-        }
-    }
-
-}
-*/
-
 void MainWindow::loadHexagramMeanings()
 {
     QString datasetPath = Constants::appDirPath + "/iching.json";
@@ -595,7 +681,116 @@ void MainWindow::loadHexagramMeanings()
     }
 
 }
+*/
 
+void MainWindow::loadHexagramMeanings()
+{
+    QString datasetPath = Constants::appDirPath + "/iching.json";
+    QFile file(datasetPath);
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        return;
+    }
+
+    QJsonObject root = doc.object();
+    hexagramMeanings.clear();
+
+    for (const QString &key : root.keys()) {
+        QJsonObject hexObj = root[key].toObject();
+        int hexNumber = key.toInt();
+
+        QString html;
+
+        // MAIN CONTAINER - NO FIXED PIXEL SIZE
+        html += QString("<div style='font-family: Georgia, serif; line-height: 1.6; color: #dddddd;'>");
+
+        // Header with hexagram number and name - relative size
+        html += QString("<h2 style='color: #ffd700; font-size: 1.8em; margin-bottom: 5px;'>%1. %2</h2>")
+                .arg(hexNumber)
+                .arg(hexObj["english"].toString());
+
+        // Above/Below info as badges - relative size
+        if (hexObj.contains("wilhelm_above") && hexObj.contains("wilhelm_below")) {
+            QJsonObject above = hexObj["wilhelm_above"].toObject();
+            QJsonObject below = hexObj["wilhelm_below"].toObject();
+            html += QString("<div style='background: #2a2a2a; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 0.85em;'>"
+                           "<span style='color: #88ff88;'>☯ above</span> %1 %2 %3 &nbsp;&nbsp;|&nbsp;&nbsp;"
+                           "<span style='color: #ff8888;'>☯ below</span> %4 %5 %6"
+                           "</div>")
+                    .arg(above["chinese"].toString())
+                    .arg(above["symbolic"].toString())
+                    .arg(above["alchemical"].toString())
+                    .arg(below["chinese"].toString())
+                    .arg(below["symbolic"].toString())
+                    .arg(below["alchemical"].toString());
+        }
+
+        // Symbolic description - relative size
+        if (hexObj.contains("wilhelm_symbolic")) {
+            QString symbolic = hexObj["wilhelm_symbolic"].toString();
+            symbolic.replace("\n\n", "</p><p style='margin-bottom: 12px;'>");
+            symbolic.replace("\n", "<br>");
+            html += QString("<div style='margin: 15px 0;'>"
+                           "<p style='margin-bottom: 12px; line-height: 1.6; font-size: 1em;'>%1</p></div>").arg(symbolic);
+        }
+
+        // Judgment section - relative size
+        if (hexObj.contains("wilhelm_judgment")) {
+            QJsonObject judgment = hexObj["wilhelm_judgment"].toObject();
+            html += "<div style='background: #1a2a1a; padding: 12px; border-left: 4px solid #88ff88; margin: 15px 0; border-radius: 4px;'>";
+            html += "<h3 style='color: #88ff88; font-size: 1.3em; margin-top: 0; margin-bottom: 8px;'>⚖️ THE JUDGMENT</h3>";
+            html += QString("<p style='margin-bottom: 8px; font-size: 1em;'><i>%1</i></p>").arg(judgment["text"].toString());
+            if (judgment.contains("comments") && !judgment["comments"].toString().isEmpty()) {
+                html += QString("<p style='color: #aaaaaa; font-size: 0.85em;'>%1</p>").arg(judgment["comments"].toString());
+            }
+            html += "</div>";
+        }
+
+        // Image section - relative size
+        if (hexObj.contains("wilhelm_image")) {
+            QJsonObject image = hexObj["wilhelm_image"].toObject();
+            html += "<div style='background: #1a1a2a; padding: 12px; border-left: 4px solid #ffaa66; margin: 15px 0; border-radius: 4px;'>";
+            html += "<h3 style='color: #ffaa66; font-size: 1.3em; margin-top: 0; margin-bottom: 8px;'>🖼️ THE IMAGE</h3>";
+            html += QString("<p style='margin-bottom: 8px; font-size: 1em;'><i>%1</i></p>").arg(image["text"].toString());
+            if (image.contains("comments") && !image["comments"].toString().isEmpty()) {
+                html += QString("<p style='color: #aaaaaa; font-size: 0.85em;'>%1</p>").arg(image["comments"].toString());
+            }
+            html += "</div>";
+        }
+
+        // Lines section - THIS WILL NOW ZOOM WITH CTRL+WHEEL
+        if (hexObj.contains("wilhelm_lines")) {
+            QJsonObject lines = hexObj["wilhelm_lines"].toObject();
+            html += "<div style='margin: 15px 0;'>";
+            html += "<h3 style='color: #88aaff; font-size: 1.3em;'>📜 THE LINES</h3>";
+            for (const QString &lineKey : lines.keys()) {
+                QJsonObject line = lines[lineKey].toObject();
+                html += QString("<div style='background: #1a1a1a; padding: 12px; margin: 10px 0; border-radius: 4px; border-left: 3px solid #88aaff;'>");
+                html += QString("<b style='color: #88aaff; font-size: 1.05em;'>Line %1</b><br>").arg(lineKey);
+                html += QString("<span style='font-style: italic; font-size: 1em;'>%1</span><br>").arg(line["text"].toString());
+                if (line.contains("comments") && !line["comments"].toString().isEmpty()) {
+                    html += QString("<span style='color: #aaaaaa; font-size: 0.85em;'>%1</span>").arg(line["comments"].toString());
+                }
+                html += "</div>";
+            }
+            html += "</div>";
+        }
+
+        html += "</div>";
+        hexagramMeanings[hexNumber] = html;
+    }
+}
+
+/*
 void MainWindow::displayHexagramMeanings(int sourceHexNumber, int modifiedHexNumber)
 {
     meaningTextEdit->clear();
@@ -625,7 +820,28 @@ void MainWindow::displayHexagramMeanings(int sourceHexNumber, int modifiedHexNum
     meaningTextEdit->moveCursor(QTextCursor::Start);
 
 }
+*/
 
+void MainWindow::displayHexagramMeanings(int sourceHexNumber, int modifiedHexNumber)
+{
+    QString html;
+
+    // Source hexagram
+    html += "<div style='margin-bottom: 30px;'>";
+    html += hexagramMeanings.value(sourceHexNumber, "<p style='color: #ff6666;'>No interpretation available</p>");
+    html += "</div>";
+
+    // Resulting hexagram (if different)
+    if (modifiedHexNumber > 0 && modifiedHexNumber != sourceHexNumber) {
+        html += "<hr style='border-color: #ffd700; margin: 20px 0;'>";
+        html += "<div style='margin-top: 20px;'>";
+        html += hexagramMeanings.value(modifiedHexNumber);
+        html += "</div>";
+    }
+
+    meaningTextEdit->setHtml(html);
+    meaningTextEdit->moveCursor(QTextCursor::Start);
+}
 
 
 void MainWindow::loadTarotCardImage(QLabel* label, int hexagramNumber)
@@ -694,6 +910,11 @@ void MainWindow::loadTarotCardImage(QLabel* label, int hexagramNumber)
 
 void MainWindow::onTossClicked()
 {
+
+    if (importModeActive) {
+        importPhysicalToss();
+        return;
+    }
 
     // If we don't have 6 lines yet, add one more
     if (iching->getCurrentLines().size() < 6) {
@@ -1450,7 +1671,7 @@ void MainWindow::onSetQuestion() {
 
         // Create question input
         questionInput = new QTextEdit(questionDialog);
-        questionInput->setToolTip("Your question will be forwarded to the AI for interpretation");
+        questionInput->setToolTip("Your question will be forwarded to the AI");
         questionInput->setPlaceholderText("Enter your question for the reading...");
         questionInput->setMaximumHeight(100);
 
@@ -1466,11 +1687,10 @@ void MainWindow::onSetQuestion() {
             QMessageBox::information(this, "Question Set",
                 "Your question has been saved and will be used for AI interpretation.");
 
-            openQuestionDialogButton->setToolTip("Pose a question to be forwarded to AI\n\n"
-                                          "Current question:\n\n"
-                                          + question);
+            openQuestionDialogButton->setToolTip(QString("Pose a question to be forwarded to AI\n\n"
+                                                 "Current question:\n"
+                                                 "%1").arg(question));
             }
-
             //questionDialog->hide();
         });
 
@@ -1569,7 +1789,6 @@ void MainWindow::gatAiInterpretation()
         msgBox.exec();
 
         if (msgBox.clickedButton() == openSettingsButton) {
-            // Open model selector dialog (you'll need to create this)
             // ModelSelectorDialog dlg(this);
             // dlg.exec();
 
@@ -1797,7 +2016,7 @@ bool MainWindow::downloadDataset()
 }
 
 //save-load
-
+/*
 void MainWindow::saveDivination()
 {
     if (iching->getCurrentLines().size() < 6) {
@@ -1853,6 +2072,98 @@ void MainWindow::saveDivination()
     } else {
         QMessageBox::warning(this, "Error", "Failed to save divination.");
     }
+
+    // ========== ADD JOURNAL ENTRY ==========
+    // Get source and modified hexagram numbers
+    int sourceNum = 0;
+    int modifiedNum = 0;
+
+    HexagramInfo sourceInfo = iching->getSourceHexagram();
+    HexagramInfo modifiedInfo = iching->getModifiedHexagram();
+
+    if (!sourceInfo.number.isEmpty()) {
+        QRegularExpression re("^(\\d+)");
+        QRegularExpressionMatch match = re.match(sourceInfo.number);
+        if (match.hasMatch()) {
+            sourceNum = match.captured(1).toInt();
+        }
+    }
+
+    if (!modifiedInfo.number.isEmpty()) {
+        QRegularExpression re("^(\\d+)");
+        QRegularExpressionMatch match = re.match(modifiedInfo.number);
+        if (match.hasMatch()) {
+            modifiedNum = match.captured(1).toInt();
+        }
+    }
+
+    // Add entry to journal (empty notes, just the reading)
+    JournalManager::instance().addEntry(sourceNum, modifiedNum, currentDeck, filePath, "");
+}
+*/
+
+void MainWindow::saveDivination()
+{
+    if (iching->getCurrentLines().size() < 6) {
+        QMessageBox::warning(this, "Cannot Save", "Complete the hexagram first.");
+        return;
+    }
+
+    // Ensure save directory exists
+    QDir dir(Constants::saveDirPath);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    QString filePath = QFileDialog::getSaveFileName(this,
+        "Save Divination",
+        Constants::saveDirPath + "/divination_" +
+            QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss") + ".json",
+        "JSON Files (*.json)");
+
+    if (filePath.isEmpty()) return;
+
+    QJsonObject root;
+
+    // Basic info
+    root["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    root["question"] = currentQuestion;
+    root["aiInterpretation"] = aiTextEdit->toPlainText();
+    root["deckName"] = currentDeck;
+
+    // Lines data
+    QStringList lines = iching->getCurrentLines();
+    QJsonArray linesArray;
+    for (const QString &line : lines) {
+        linesArray.append(line.toInt());
+    }
+    root["lines"] = linesArray;
+
+    // Hexagram numbers
+    HexagramInfo source = iching->getSourceHexagram();
+    int sourceNum = source.number.toInt();
+    root["sourceHexagram"] = sourceNum;
+
+    HexagramInfo modified = iching->getModifiedHexagram();
+    int modifiedNum = 0;
+    if (!modified.number.isEmpty()) {
+        modifiedNum = modified.number.toInt();
+        root["modifiedHexagram"] = modifiedNum;
+    }
+
+    // Write to file
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(root).toJson());
+        file.close();
+        QMessageBox::information(this, "Success", "Divination saved successfully.");
+    } else {
+        QMessageBox::warning(this, "Error", "Failed to save divination.");
+        return;  // Don't add journal entry if save failed
+    }
+
+    // ========== ADD JOURNAL ENTRY ==========
+    JournalManager::instance().addEntry(sourceNum, modifiedNum, currentDeck, filePath, "");
 }
 
 void MainWindow::loadDivination()
@@ -1882,6 +2193,10 @@ void MainWindow::loadDivination()
 
     // Restore question
     currentQuestion = root["question"].toString();
+    openQuestionDialogButton->setToolTip(QString("Pose a question to be forwarded to AI\n\n"
+                                         "Current question:\n"
+                                         "%1").arg(currentQuestion));
+
 
     // Restore AI interpretation
     aiTextEdit->setText(root["aiInterpretation"].toString());
@@ -1912,6 +2227,60 @@ void MainWindow::loadDivination()
     QMessageBox::information(this, "Success", "Divination loaded successfully.");
 }
 
+
+void MainWindow::loadDivinationFromFile(const QString& filePath)
+{
+    if (filePath.isEmpty()) return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Error", "Failed to open file: " + filePath);
+        return;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+
+    if (!doc.isObject()) {
+        QMessageBox::warning(this, "Error", "Invalid JSON file.");
+        return;
+    }
+
+    QJsonObject root = doc.object();
+
+    // Restore question
+    currentQuestion = root["question"].toString();
+    openQuestionDialogButton->setToolTip(QString("Pose a question to be forwarded to AI\n\n"
+                                         "Current question:\n"
+                                         "%1").arg(currentQuestion));
+    // Restore AI interpretation
+    aiTextEdit->setText(root["aiInterpretation"].toString());
+
+    // Restore deck
+    currentDeck = root["deckName"].toString();
+    int deckIndex = deckCombo->findText(currentDeck);
+    if (deckIndex >= 0) {
+        deckCombo->setCurrentIndex(deckIndex);
+    }
+
+    // Restore lines
+    QJsonArray linesArray = root["lines"].toArray();
+    QStringList lines;
+    for (const QJsonValue &val : linesArray) {
+        lines.append(QString::number(val.toInt()));
+    }
+
+    // Reset and set lines in IChing
+    iching->reset();
+    for (const QString &line : lines) {
+        iching->currentLines.append(line);
+    }
+
+    // Update display
+    updateHexagramDisplay();
+
+    QMessageBox::information(this, "Success", "Divination loaded successfully.");
+}
 
 void MainWindow::showDeckImportGuide()
 {
@@ -2186,11 +2555,220 @@ void MainWindow::resetCoins()
 
         QPainter painter(&pixmap);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setOpacity(0.3);
+        //painter.setOpacity(0.3);
         renderer.render(&painter);
         painter.end();
 
         coinLabels[i]->setPixmap(pixmap);
         coinLabels[i]->setAlignment(Qt::AlignCenter);
     }
+}
+
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event)
+{
+    if (importModeActive && event->type() == QEvent::MouseButtonPress) {
+        if (obj == coinLabel1 || obj == coinLabel2 || obj == coinLabel3) {
+            // Flip this coin
+            QLabel* coin = qobject_cast<QLabel*>(obj);
+            if (coin) {
+                // Get current coin state (we'll track manually or read from pixmap)
+                // For simplicity, add a property to track state
+                bool isHeads = coin->property("isHeads").toBool();
+                isHeads = !isHeads;
+                coin->setProperty("isHeads", isHeads);
+
+                // Update the displayed coin
+                QString svgPath = isHeads ? ":/files/chinese_coin_heads.svg" : ":/files/chinese_coin_tails.svg";
+                QSvgRenderer renderer(svgPath);
+                QPixmap pixmap(170, 170);
+                pixmap.fill(Qt::transparent);
+                QPainter painter(&pixmap);
+                painter.setRenderHint(QPainter::Antialiasing);
+                renderer.render(&painter);
+                painter.end();
+                coin->setPixmap(pixmap);
+            }
+            return true; // Event consumed
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
+}
+
+
+void MainWindow::onImportModeToggled(bool checked)
+{
+    importModeActive = checked;
+
+    if (checked) {
+        autoTossButton->setEnabled(false);
+        autoTossButton->setToolTip("Auto toss is disabled in physical mode");
+        // Enable import mode
+        tossButton->setText("Set Result");
+        tossButton->setToolTip("Record current coin state as a hexagram line");
+
+        // Reset coins to default state
+        resetCoins();
+
+        // Initialize coin states
+        for (QLabel* coin : {coinLabel1, coinLabel2, coinLabel3}) {
+            coin->setProperty("isHeads", false); // Start all tails
+        }
+
+        meaningTextEdit->setText("Import Mode ON\n\n"
+                                 "Click on each coin to flip it to match your physical toss.\n"
+                                 "Then click 'Set Result' to record the line.\n\n"
+                                 "Repeat 6 times to build your hexagram.");
+    } else {
+        // Disable import mode
+        autoTossButton->setEnabled(true);
+        autoTossButton->setToolTip(QString());
+        tossButton->setText("Toss");
+        tossButton->setToolTip("Perform a random coin toss");
+    }
+}
+
+void MainWindow::importPhysicalToss()
+{
+    if (!importModeActive) return;
+
+    if (iching->getCurrentLines().size() >= 6) {
+        meaningTextEdit->setText("Hexagram is complete. Press Reset to start a new divination.");
+        return;
+    }
+
+    // Read current coin states (heads = 1, tails = 0)
+    QList<int> coinResults;
+    for (QLabel* coin : {coinLabel1, coinLabel2, coinLabel3}) {
+        bool isHeads = coin->property("isHeads").toBool();
+        coinResults.append(isHeads ? 1 : 0);
+    }
+
+    // Calculate sum (0,1,2,3)
+    int sum = coinResults[0] + coinResults[1] + coinResults[2];
+    QString lineType;
+    switch (sum) {
+    case 0: lineType = "2"; break; // changing yin
+    case 1: lineType = "0"; break; // stable yin
+    case 2: lineType = "1"; break; // stable yang
+    case 3: lineType = "3"; break; // changing yang
+    }
+
+    // Add to current lines
+    QStringList currentLines = iching->getCurrentLines();
+    currentLines.append(lineType);
+    iching->reset();
+    for (const QString& line : currentLines) {
+        iching->currentLines.append(line);
+    }
+
+    // Play sound
+    if (isPlaySounds) coinSound->play();
+
+    // Update display
+    updateHexagramDisplay();
+
+    // Show meaning when complete
+    if (currentLines.size() == 6) {
+        int sourceNum = 0;
+        int modifiedNum = 0;
+
+        HexagramInfo sourceInfo = iching->getSourceHexagram();
+        HexagramInfo modifiedInfo = iching->getModifiedHexagram();
+
+        if (!sourceInfo.number.isEmpty()) {
+            QRegularExpression re("^(\\d+)");
+            QRegularExpressionMatch match = re.match(sourceInfo.number);
+            if (match.hasMatch()) sourceNum = match.captured(1).toInt();
+        }
+
+        if (!modifiedInfo.number.isEmpty()) {
+            QRegularExpression re("^(\\d+)");
+            QRegularExpressionMatch match = re.match(modifiedInfo.number);
+            if (match.hasMatch()) modifiedNum = match.captured(1).toInt();
+        }
+
+        displayHexagramMeanings(sourceNum, modifiedNum);
+        meaningTextEdit->append("\n\n--- Import Mode Complete ---");
+    } else {
+        QString progressMessage = "Line " + QString::number(currentLines.size()) +
+                                  " of 6 added. Flip coins and click 'Set Result' again.";
+        meaningTextEdit->setText(progressMessage);
+    }
+
+    // Reset coin display for next toss
+    resetCoins();
+    for (QLabel* coin : {coinLabel1, coinLabel2, coinLabel3}) {
+        coin->setProperty("isHeads", false);
+    }
+}
+
+// social and journal
+
+void MainWindow::setupShareButton()
+{
+    // Create the share button
+    QPushButton *shareButton = new QPushButton(this);
+    shareButton->setIcon(QIcon(":/files/share-2.svg"));
+    shareButton->setToolTip("Share this spread");
+    shareButton->setFlat(true);
+    shareButton->setFixedSize(32, 32);
+
+    /*
+    shareButton->setStyleSheet(R"(
+        QPushButton {
+            border: none;
+            border-radius: 4px;
+        }
+        QPushButton:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        QPushButton:pressed {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    )");
+    */
+
+    // Add to menubar corner
+    QMenuBar *menuBar = this->menuBar();
+    if (menuBar) {
+        menuBar->setCornerWidget(shareButton, Qt::TopRightCorner);
+    }
+
+    connect(shareButton, &QPushButton::clicked, this, &MainWindow::onShareClicked);
+}
+
+void MainWindow::onShareClicked()
+{
+    // Check if we have a completed hexagram to share
+    if (iching->getCurrentLines().size() < 6) {
+        QMessageBox::information(this, "Cannot Share",
+            "Complete a hexagram first before sharing.");
+        return;
+    }
+
+    // Capture the central widget (coins + hexagrams)
+    QPixmap screenshot(centralWidget->size());
+    centralWidget->render(&screenshot);
+
+    // Add watermark
+    QPainter painter(&screenshot);
+    painter.setPen(QPen(QColor(255, 255, 255, 180), 2));
+    painter.setFont(QFont("Arial", 14, QFont::Bold));
+    painter.drawText(screenshot.rect(), Qt::AlignBottom | Qt::AlignRight,
+                     "  IChingDiviner  ");
+    painter.end();
+
+    // Build share text
+    QString shareText = "My I Ching reading from IChingDiviner\n\nThe ancient wisdom of the I Ching guides us through life's changes.";
+
+    // Copy to clipboard
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setImage(screenshot.toImage());
+
+    // Create and show dialog
+    SocialShareDialog *dialog = new SocialShareDialog(shareText, screenshot, m_socialShare, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setModal(false);
+    dialog->show();
 }

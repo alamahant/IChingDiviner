@@ -36,6 +36,7 @@ if(true)
         aimanager.cpp aimanager.h modelselectordialog.cpp modelselectordialog.h
         model.h
         donationdialog.cpp donationdialog.h helpmenudialog.cpp helpmenudialog.h
+        journalcalendar.cpp journalcalendar.h journaldialog.cpp journaldialog.h journalmanager.cpp journalmanager.h socialshare.cpp socialshare.h socialsharedialog.cpp socialsharedialog.h
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET IChingDiviner APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

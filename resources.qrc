@@ -4,5 +4,17 @@
         <file>files/chinese_coin_heads.svg</file>
         <file>files/chinese_coin_tails.svg</file>
         <file>files/coin.wav</file>
+        <file>files/share-2.svg</file>
+
+        <file>icons/x.svg</file>
+        <file>icons/facebook.svg</file>
+        <file>icons/reddit.svg</file>
+        <file>icons/telegram.svg</file>
+        <file>icons/instagram.svg</file>
+        <file>icons/send.svg</file>
+        <file>icons/copy.svg</file>
+        <file>icons/save.svg</file>
+        <file>icons/folder.svg</file>
+        <file>icons/whatsapp.svg</file>
     </qresource>
 </RCC>

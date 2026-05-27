@@ -207,7 +207,67 @@ QString HelpMenuDialog::getWhatsNewContent()
 {
     return R"(
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #e0e0e0;">
+    <h1 style="color: #ffd700; text-align: center; margin-bottom: 20px;">☯ What's New in IChingDiviner 1.0.3</h1>
+
+
+
+    <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #404040;">
+        <h2 style="color: #ffd700; margin-top: 0;">📅 May 27, 2026</h2>
+        <p style="color: #cccccc; text-align: center;">Your personal I Ching journal and sharing companion.</p>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">📔 Journal System</h3>
+            <p style="color: #cccccc;">Every reading you save is automatically recorded in your personal journal:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>Date browsing:</strong> Calendar view shows which days have entries</li>
+                <li><strong>One-click reload:</strong> Load any past reading instantly</li>
+                <li><strong>Personal notes:</strong> Add your reflections and insights to any entry</li>
+                <li><strong>Complete history:</strong> Never lose track of your divinations</li>
+            </ul>
+        </div>
+
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">📤 Social Sharing</h3>
+            <p style="color: #cccccc;">Share your readings with friends and fellow practitioners:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>One-click capture:</strong> Screenshot your complete reading (coins + hexagrams)</li>
+                <li><strong>Multiple platforms:</strong> Twitter/X, Facebook, Reddit, Telegram, WhatsApp, Instagram</li>
+                <li><strong>Save locally:</strong> Export as image file</li>
+                <li><strong>Copy to clipboard:</strong> Paste anywhere</li>
+                <li><strong>Subtle watermark:</strong> "IChingDiviner" added to shared images</li>
+            </ul>
+        </div>
+
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">📖 Beautiful Hexagram Meanings</h3>
+            <p style="color: #cccccc;">The Wilhelm translation now displays in rich, readable HTML format:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>Color-coded sections:</strong> Judgment (green), Image (orange), Lines (blue)</li>
+                <li><strong>Elegant typography:</strong> Georgia serif font for comfortable reading</li>
+                <li><strong>Zoom support:</strong> Ctrl+mouse wheel to adjust text size</li>
+                <li><strong>Clear hierarchy:</strong> Headers, paragraphs, and visual separation</li>
+                <li><strong>Above/Below info:</strong> Chinese, symbolic, and alchemical elements displayed as badges</li>
+            </ul>
+        </div>
+
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">🪙 Import Physical Toss Mode</h3>
+            <p style="color: #cccccc;">Perfect for those who want to use real physical coins:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>Toggle mode:</strong> "Import Physical Toss" button enables manual entry</li>
+                <li><strong>Click coins:</strong> Flip each coin individually to match your physical toss</li>
+                <li><strong>Set Result:</strong> Record the current coin state as a hexagram line</li>
+                <li><strong>Complete hexagram:</strong> Build your reading one line at a time</li>
+                <li><strong>Visual feedback:</strong> Checked button state shows when mode is active</li>
+            </ul>
+        </div>
+
+
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #e0e0e0;">
     <h1 style="color: #ffd700; text-align: center; margin-bottom: 20px;">☯ What's New in IChingDiviner 1.0.0</h1>
+
 
     <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #404040;">
         <h2 style="color: #ffd700; margin-top: 0;">🚀 Initial Release — March 18, 2026</h2>
@@ -316,6 +376,7 @@ QString HelpMenuDialog::getShortcutsContent()
     return QString();  // TODO: Implement
 }
 
+
 QString HelpMenuDialog::getAboutContent() {
     return QString(R"(
         <div style="text-align: center; font-family: Arial, sans-serif; color: #e0e0e0;">
@@ -332,8 +393,7 @@ QString HelpMenuDialog::getAboutContent() {
                 <p style="margin: 5px 0;"><strong style="color: #ffd700;">Version:</strong> <span style="color: #cccccc;">%1</span></p>
                 <p style="margin: 5px 0;"><strong style="color: #ffd700;">Built with:</strong> <span style="color: #cccccc;">Qt Framework 6</span></p>
                 <p style="margin: 5px 0;"><strong style="color: #ffd700;">Translation:</strong> <span style="color: #cccccc;">Richard Wilhelm / Cary F. Baynes (Public Domain)</span></p>
-                <p style="margin: 5px 0;"><strong style="color: #ffd700;">Platform:</strong> <span style="color: #cccccc;">Linux (Flatpak), Windows, macOS</span></p>
-                <p style="margin: 5px 0;"><strong style="color: #ffd700;">License:</strong> <span style="color: #cccccc;">GPL3</span></p>
+                <p style="margin: 5px 0;"><strong style="color: #ffd700;">License:</strong> <span style="color: #cccccc;">GPL-3.0</span></p>
             </div>
 
             <div style="margin: 30px 0;">
@@ -350,21 +410,29 @@ QString HelpMenuDialog::getAboutContent() {
                     <p>• <strong style="color: #ffd700;">Dark Theme</strong> — Easy-on-the-eyes interface for extended contemplation</p>
                 </div>
 
-                <p style="margin-top: 30px; color: #b0b0b0;">Available for Linux (Flatpak), Windows, and macOS.</p>
-                <p style="margin: 20px 0;">
-                    <span style="color: #b0b0b0;">Project Repository:</span><br>
-                    <a href="https://github.com/dharma/IChingDiviner" style="color: #ffd700; text-decoration: none;">https://github.com/dharma/IChingDiviner</a>
-                </p>
+                <p><strong style="color: #27ae60;">✓ Free for Linux on Flathub</strong></p>
+
+                <p><strong>Windows & macOS Binaries:</strong><br>
+                <a href="https://jnanadhakini.gumroad.com/l/qhuipk" style="color: #ffd700; text-decoration: none;">
+                → https://jnanadhakini.gumroad.com/l/qhuipk</a></p>
+
+                <p><strong>All Windows/macOS apps:</strong><br>
+                <a href="https://jnanadhakini.gumroad.com" style="color: #ffd700; text-decoration: none;">
+                → https://jnanadhakini.gumroad.com</a></p>
+
+                <p><strong>Source Code & Linux Version:</strong><br>
+                <a href="https://github.com/alamahant/IChingDiviner" style="color: #ffd700; text-decoration: none;">
+                → https://github.com/alamahant/IChingDiviner</a></p>
             </div>
 
             <hr style="margin: 30px 0; border: 1px solid #404040;">
 
             <div style="margin: 20px 0;">
                 <p style="margin: 5px 0; color: #b0b0b0;">
-                    <strong style="color: #ffd700;">Copyright © 2026 Dharma</strong>
+                    <strong style="color: #ffd700;">Copyright © 2025 Alamahant</strong>
                 </p>
                 <p style="margin: 5px 0; font-size: 12px; color: #808080;">
-                    Licensed under MIT License. Wilhelm/Baynes translation in public domain since 2020.
+                    Licensed under GPL-3.0. Wilhelm/Baynes translation in public domain.
                 </p>
                 <p style="margin: 5px 0; font-size: 12px; color: #808080;">
                     Dataset compiled by Adam Blvck (MIT License)
@@ -382,6 +450,8 @@ QString HelpMenuDialog::getAboutContent() {
         </div>
     )").arg(QApplication::applicationVersion());
 }
+
+
 QString HelpMenuDialog::getFeaturesContent()
 {
     return R"(
@@ -493,6 +563,16 @@ QString HelpMenuDialog::getFeaturesContent()
 
                 <h3 style="color: #ffa500;">Keyboard Shortcuts</h3>
                 <p style="color: #cccccc;">Quick access to all major functions: Ctrl+D toggles display mode, Ctrl+S saves, Ctrl+O loads.</p>
+
+                <h3 style="color: #ffa500;">📔 Journal System</h3>
+                <p style="color: #cccccc;">Every reading you save is automatically recorded with date browsing, personal notes, and one-click reloading of past divinations.</p>
+
+                <h3 style="color: #ffa500;">📤 Social Sharing</h3>
+                <p style="color: #cccccc;">Capture your complete reading as an image and share to social media, save locally, or copy to clipboard with a single click.</p>
+
+                <h3 style="color: #ffa500;">📖 Rich Hexagram Display</h3>
+                <p style="color: #cccccc;">Beautifully formatted Wilhelm translation with color-coded sections, elegant typography, and full text zoom support (Ctrl+mouse wheel).</p>
+
             </div>
 
             <h2 style="color: #ffd700; border-bottom: 2px solid #ffd700; padding-bottom: 5px;">🔧 Technical Features</h2>
@@ -687,6 +767,25 @@ QString HelpMenuDialog::getInstructionsContent()
         <h3 style="color: #ffa500;">Configure AI (Optional)</h3>
         <p style="color: #cccccc;">Tools → AI Model Selector — Set up your preferred AI provider</p>
     </div>
+
+
+<h2 style="color: #ffd700; border-bottom: 2px solid #ffd700; padding-bottom: 5px;">🪙 Import Physical Toss</h2>
+
+<div style="margin: 20px 0;">
+    <h3 style="color: #ffa500;">Manual Coin Entry Mode</h3>
+    <p style="color: #cccccc;">Click "Import Physical Toss" to toggle manual mode — click on each coin to flip it, then press "Set Result" to record the line. Perfect for using real physical coins in your divination practice.</p>
+
+    <h3 style="color: #ffa500;">Build Line by Line</h3>
+    <p style="color: #cccccc;">Match your physical toss by clicking coins to heads or tails, then record each line. Complete your hexagram one authentic toss at a time.</p>
+</div>
+
+<h2 style="color: #ffd700; border-bottom: 2px solid #ffd700; padding-bottom: 5px;">🔍 Text Zoom Feature</h2>
+
+<div style="margin: 20px 0;">
+    <h3 style="color: #ffa500;">Ctrl + Mouse Wheel</h3>
+    <p style="color: #cccccc;">In the Hexagram Meaning panel, hold Ctrl and scroll your mouse wheel to zoom text in or out. Adjust the font size to your comfort for easier reading of the Wilhelm translation.</p>
+</div>
+
 
     <div style="background-color: #2a2a2a; padding: 20px; border-radius: 8px; text-align: center; margin-top: 30px; border: 1px solid #404040;">
         <h3 style="color: #ffd700; margin-top: 0;">🌟 Quick Tips</h3>

@@ -41,7 +41,6 @@ struct WilhelmLine {
     QString comments;
 };
 
-// Then the main HexagramInfo (you don't need separate WilhelmSection/Judgment since WilhelmText covers both)
 struct HexagramInfo {
     QString number;
     QString symbol;

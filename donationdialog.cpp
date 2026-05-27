@@ -100,8 +100,7 @@ void DonationDialog::copyToClipboard(const QString &url)
 {
     QApplication::clipboard()->setText(url);
 
-    // Optional: You can add a temporary tooltip or status message here
-    // For example: QToolTip::showText(QCursor::pos(), tr("Link copied!"));
+
 }
 
 QString DonationDialog::getDonationContent() const

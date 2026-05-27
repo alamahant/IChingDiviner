@@ -84,6 +84,20 @@
 
 <releases>
 
+<release version="1.0.3" date="2026-05-27">
+  <description>
+    <p>Major feature release with journal system, social sharing, and enhanced hexagram display:</p>
+    <ul>
+      <li>Added Journal System - Automatically records every saved reading with date browsing, personal notes, and one-click reloading of past divinations</li>
+      <li>Added Social Sharing - Capture and share your readings as images to social media, email, or save locally</li>
+      <li>Enhanced Hexagram Meanings - Wilhelm translation now displays in beautifully formatted HTML with colored sections, improved typography, and full text zoom support (Ctrl+mouse wheel)</li>
+      <li>Added Import Physical Toss mode - Manually flip coins to record real physical I Ching tosses</li>
+      <li>Improved deck selector with centered text and better visual feedback</li>
+      <li>Various UI polish and bug fixes</li>
+    </ul>
+  </description>
+</release>
+
 <release version="1.0.2" date="2026-03-31">
   <description>
     <p>Enhanced Chinese character support and improved coin visuals:</p>
