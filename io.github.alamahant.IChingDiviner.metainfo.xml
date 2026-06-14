@@ -84,6 +84,15 @@
 
 <releases>
 
+<release version="1.0.4" date="2026-06-14">
+  <description>
+    <p>Hexagram browser added:</p>
+    <ul>
+      <li>Added Hexagram Browser - Browse all 64 hexagrams in an 8x8 grid with symbol and number display, click any hexagram to instantly view its Wilhelm/Baynes interpretation, features hover magnification for easy reading</li>
+    </ul>
+  </description>
+</release>
+
 <release version="1.0.3" date="2026-05-27">
   <description>
     <p>Major feature release with journal system, social sharing, and enhanced hexagram display:</p>

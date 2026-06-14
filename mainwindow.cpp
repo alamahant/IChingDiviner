@@ -38,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     , mouseTimer(new QTimer(this))
     , journalDialog(new JournalDialog(this))
     , m_socialShare(new SocialShare(this))
+    , hexBrowser(new HexagramBrowserDialog(iching, this))
 
 {
     setWindowTitle("I-Ching Diviner");
@@ -75,6 +76,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(journalDialog, &JournalDialog::loadReadingRequested, this, [this](const QString& fileName){
         loadDivinationFromFile(fileName);
     });
+
+    // Configure hexBrowser
+  connect(hexBrowser, &HexagramBrowserDialog::hexagramSelected,
+          this, &MainWindow::onHexagramSelectedFromBrowser);
+  connect(hexBrowser, &HexagramBrowserDialog::hexDialogHidden, this, [this]{
+      hexBrowserButton->setChecked(false);
+  });
 
 }
 
@@ -285,6 +293,19 @@ void MainWindow::setupUI()
         journalDialog->raise();
     });
     dockLayout->addWidget(openJournalButton);
+
+    hexBrowserButton = new QPushButton("Hex Browser", this);
+    hexBrowserButton->setCheckable(true);
+    hexBrowserButton->setChecked(false);
+    connect(hexBrowserButton, &QPushButton::clicked, this, [this](bool checked){
+       if(checked){
+           hexBrowser->show();
+           hexBrowser->raise();
+       }else{
+           hexBrowser->hide();
+       }
+    });
+    dockLayout->addWidget(hexBrowserButton);
 
     QLabel* meaningsLabel = new QLabel("Hexagram Meanings");
     meaningsLabel->setToolTip("Ctrl+mouse wheel to zoom in/out");
@@ -510,6 +531,24 @@ void MainWindow::setupDarkTheme()
         "QPushButton::checked:hover {"
         "    background-color: #7a5e4a;"
         "    border: 2px solid #ffcc88;"
+        "}"
+
+        /* Menu item selection - keep text white */
+        "QMenu::item:selected {"
+        "    color: #ffffff;"
+        "    background-color: #2a82da;"
+        "}"
+        ""
+        /* ComboBox popup list item selection */
+        "QComboBox QAbstractItemView::item:selected {"
+        "    color: #ffffff;"
+        "    background-color: #2a82da;"
+        "}"
+        ""
+        /* Alternative if the above doesn't work for combobox */
+        "QComboBox QAbstractItemView {"
+        "    selection-color: #ffffff;"
+        "    selection-background-color: #2a82da;"
         "}"
 
     );
@@ -790,37 +829,6 @@ void MainWindow::loadHexagramMeanings()
     }
 }
 
-/*
-void MainWindow::displayHexagramMeanings(int sourceHexNumber, int modifiedHexNumber)
-{
-    meaningTextEdit->clear();
-    QString combinedMeaning;
-
-    // Always try to show source hexagram
-    QString sourceMeaning = hexagramMeanings.value(sourceHexNumber);
-    if (!sourceMeaning.isEmpty()) {
-        combinedMeaning += "SOURCE HEXAGRAM:\n\n";
-        combinedMeaning += sourceMeaning;
-    } else {
-        combinedMeaning += "SOURCE HEXAGRAM:\n\n(No interpretation available)\n";
-    }
-
-    // Show resulting hexagram only if it exists and is different
-    if (modifiedHexNumber > 0 && modifiedHexNumber != sourceHexNumber) {
-        QString modifiedMeaning = hexagramMeanings.value(modifiedHexNumber);
-        if (!modifiedMeaning.isEmpty()) {
-            combinedMeaning += "\n\nRESULTING HEXAGRAM:\n\n";
-            combinedMeaning += modifiedMeaning;
-        }
-    }
-
-    // Always overwrite previous text
-    meaningTextEdit->clear();
-    meaningTextEdit->setPlainText(combinedMeaning);
-    meaningTextEdit->moveCursor(QTextCursor::Start);
-
-}
-*/
 
 void MainWindow::displayHexagramMeanings(int sourceHexNumber, int modifiedHexNumber)
 {
@@ -2771,4 +2779,20 @@ void MainWindow::onShareClicked()
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setModal(false);
     dialog->show();
+}
+
+void MainWindow::onHexagramSelectedFromBrowser(int hexagramNumber)
+{
+    // Display single hexagram meaning
+    QString html;
+
+    html += "<div style='margin: 20px;'>";
+    html += QString("<h2 style='color: #ffd700; margin-bottom: 15px;'>Hexagram %1</h2>")
+            .arg(hexagramNumber);
+    html += hexagramMeanings.value(hexagramNumber,
+        "<p style='color: #ff6666;'>No interpretation available for this hexagram.</p>");
+    html += "</div>";
+
+    meaningTextEdit->setHtml(html);
+    meaningTextEdit->moveCursor(QTextCursor::Start);
 }

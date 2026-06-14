@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.4 - 2026-06-14
+
+### New Features
+- **Hexagram Browser** - Browse all 64 hexagrams in an 8x8 grid with symbol and number display; click any hexagram to instantly view its Wilhelm/Baynes interpretation; features hover magnification for easy reading
+
+---
+
 ## 1.0.3 - 2026-05-27
 - Added Journal System - Automatically records every saved reading with date browsing, personal notes, and one-click reloading of past divinations
 - Added Social Sharing - Capture and share your readings as images to social media, email, or save locally

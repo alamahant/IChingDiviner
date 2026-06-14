@@ -33,6 +33,7 @@
 #include <QSoundEffect>
 #include"journaldialog.h"
 #include"socialshare.h"
+#include"hexagrambrowserdialog.h"
 
 class MainWindow : public QMainWindow
 {
@@ -147,6 +148,7 @@ private slots:
     void importPhysicalToss();
     //social and sharing
     void onShareClicked();
+    void onHexagramSelectedFromBrowser(int hexagramNumber);
 
 private:
     SocialShare* m_socialShare;
@@ -154,6 +156,9 @@ private:
     QPushButton* openJournalButton;
     void setupShareButton();
 
+    // hexagram browser
+    HexagramBrowserDialog* hexBrowser = nullptr;
+    QPushButton* hexBrowserButton;
 };
 
 #endif // MAINWINDOW_H

@@ -89,7 +89,7 @@ public:
     QList<int> getChangingLinePositions();
     void generateSeed();
     QList<qint64> entropyData;
-
+    QList<HexagramInfo> getAllHexagrams() const { return hexagrams; }
 
 
 };
