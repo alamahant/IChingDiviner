@@ -206,6 +206,56 @@ QString HelpMenuDialog::getBestPracticesContent()
 QString HelpMenuDialog::getWhatsNewContent()
 {
     return R"(
+
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #e0e0e0;">
+    <h1 style="color: #ffd700; text-align: center; margin-bottom: 20px;">☯ What's New in IChingDiviner 1.0.5</h1>
+
+    <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #404040;">
+        <h2 style="color: #ffd700; margin-top: 0;">📅 October 19, 2026</h2>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">🖥️ Display Scaling &amp; Font Size Settings</h3>
+            <p style="color: #cccccc;">Customize the app to suit your screen and reading preference:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>Display scaling:</strong> Adjust the overall display scaling via the menubar</li>
+                <li><strong>Font size:</strong> Change font size via the menubar</li>
+                <li><strong>Easy access:</strong> Find both options under <strong>Settings</strong> in the menubar</li>
+            </ul>
+        </div>
+
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">✨ Improved AI Actions Appearance</h3>
+            <p style="color: #cccccc;">A refreshed look for AI Actions in the menubar:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>Refined visuals:</strong> Improved the appearance of AI Actions in the menubar for a cleaner, more polished experience</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #e0e0e0;">
+    <h1 style="color: #ffd700; text-align: center; margin-bottom: 20px;">☯ What's New in IChingDiviner 1.0.4</h1>
+
+    <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #404040;">
+        <h2 style="color: #ffd700; margin-top: 0;">📅 June 14, 2026</h2>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffd700;">
+            <h3 style="color: #ffd700; margin-top: 0;">🔯 Hexagram Browser</h3>
+            <p style="color: #cccccc;">Browse and explore all 64 hexagrams with ease:</p>
+            <ul style="color: #cccccc;">
+                <li><strong>8x8 grid:</strong> All 64 hexagrams displayed with symbol and number</li>
+                <li><strong>Instant interpretation:</strong> Click any hexagram to view its Wilhelm/Baynes interpretation</li>
+                <li><strong>Hover magnification:</strong> Enlarge hexagrams on hover for easy reading</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #e0e0e0;">
     <h1 style="color: #ffd700; text-align: center; margin-bottom: 20px;">☯ What's New in IChingDiviner 1.0.3</h1>
 
@@ -213,7 +263,6 @@ QString HelpMenuDialog::getWhatsNewContent()
 
     <div style="background-color: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #404040;">
         <h2 style="color: #ffd700; margin-top: 0;">📅 May 27, 2026</h2>
-        <p style="color: #cccccc; text-align: center;">Your personal I Ching journal and sharing companion.</p>
     </div>
 
     <div style="margin: 20px 0;">

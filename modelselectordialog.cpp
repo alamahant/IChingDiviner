@@ -18,9 +18,8 @@ ModelSelectorDialog::ModelSelectorDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(tr("AI Model Selector"));
-    setMinimumSize(400, 300);
+    setMinimumSize(600, 300);
 
-    // Create widgets
     m_listWidget = new QListWidget(this);
     m_listWidget->setSelectionMode(QAbstractItemView::SingleSelection);
 
@@ -30,12 +29,10 @@ ModelSelectorDialog::ModelSelectorDialog(QWidget *parent)
     m_setActiveButton = new QPushButton(tr("Set Active"), this);
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
-    // Initially disable buttons that require a selection
     m_editButton->setEnabled(false);
     m_deleteButton->setEnabled(false);
     m_setActiveButton->setEnabled(false);
 
-    // Layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(m_listWidget);
 
@@ -48,7 +45,6 @@ ModelSelectorDialog::ModelSelectorDialog(QWidget *parent)
     buttonLayout->addWidget(closeButton);
     mainLayout->addLayout(buttonLayout);
 
-    // Connect signals
     connect(addButton, &QPushButton::clicked, this, &ModelSelectorDialog::onAddClicked);
     connect(m_editButton, &QPushButton::clicked, this, &ModelSelectorDialog::onEditClicked);
     connect(m_deleteButton, &QPushButton::clicked, this, &ModelSelectorDialog::onDeleteClicked);
@@ -62,30 +58,28 @@ ModelSelectorDialog::ModelSelectorDialog(QWidget *parent)
         m_setActiveButton->setEnabled(hasSelection);
     });
 
-    //QLabel *infoLabel = new QLabel(tr("Note: Works best with Mistral, OpenAI (ChatGPT), and Ollama (local) models."));
-    //infoLabel->setToolTip("");
     QLabel *infoLabel = new QLabel(tr("Note: Works with any OpenAI-compatible API model.Hover for details.\n"
-                                      "You MUST restart TarotCaster after configuring your first model."));
+                                      "You MUST restart Asteria after configuring your first model."));
     infoLabel->setToolTip(tr(
-        "<b>✅ Fully compatible (OpenAI format):</b><br>"
-        "• Mistral<br>"
+        "<b>Fully compatible (OpenAI format):</b><br>"
+        "• Gemini (Google)<br>"
         "• OpenAI (ChatGPT, GPT-4)<br>"
         "• Groq (fast inference, free tier)<br>"
         "• Ollama (local models, no API key)<br>"
         "• Together AI<br>"
         "• DeepSeek<br>"
+        "• Mistral<br>"
         "• Perplexity API<br>"
         "• Fireworks AI<br>"
         "• AnyLocal (OpenAI compatibility mode)<br><br>"
-        "<b>❌ NOT compatible (different formats):</b><br>"
+        "<b>NOT compatible (different formats):</b><br>"
         "• Claude (Anthropic)<br>"
-        "• Gemini (Google)<br>"
         "• Cohere<br><br>"
         "For local models: Install Ollama, use endpoint http://localhost:11434/v1/chat/completions"
+
     ));
 
     mainLayout->addWidget(infoLabel);
-    // Load existing models
     loadModels();
     refreshModelList();
 }
@@ -122,7 +116,7 @@ void ModelSelectorDialog::loadModels()
         model.apiKey = settings.value("apiKey").toString();
         model.modelName = settings.value("modelName").toString();
         model.temperature = settings.value("temperature", 0.7).toDouble();
-        model.maxTokens = settings.value("maxTokens", 4096).toInt();
+        model.maxTokens = settings.value("maxTokens", 8192).toInt();
         m_models.append(model);
         settings.endGroup();
     }
@@ -193,7 +187,6 @@ void ModelSelectorDialog::onEditClicked()
     if (!current) return;
 
     QString name = current->text();
-    // Find the model by name
     for (int i = 0; i < m_models.size(); ++i) {
         if (m_models[i].name == name) {
             showEditDialog(&m_models[i]);
@@ -213,7 +206,6 @@ void ModelSelectorDialog::onDeleteClicked()
                                     QMessageBox::Yes | QMessageBox::No);
     if (ret != QMessageBox::Yes) return;
 
-    // Remove from vector
     for (int i = 0; i < m_models.size(); ++i) {
         if (m_models[i].name == name) {
             m_models.removeAt(i);
@@ -221,7 +213,6 @@ void ModelSelectorDialog::onDeleteClicked()
         }
     }
 
-    // If the active model was deleted, clear active
     if (m_activeModel == name) {
         setActiveModel(QString());
     }
@@ -244,30 +235,40 @@ void ModelSelectorDialog::onSetActiveClicked()
 
 void ModelSelectorDialog::onItemDoubleClicked(QListWidgetItem *item)
 {
-    // Treat double-click as edit
     onEditClicked();
 }
 
 void ModelSelectorDialog::showEditDialog(Model *model)
 {
     QDialog dialog(this);
+    dialog.resize(500, 200);
     dialog.setWindowTitle(model ? tr("Edit Model") : tr("Add Model"));
 
     QLineEdit *nameEdit = new QLineEdit(&dialog);
-    nameEdit->setText("Default");
+    //nameEdit->setText("Default");
+    nameEdit->setPlaceholderText("Default");
     nameEdit->setToolTip(tr("A unique name to identify this model configuration"));
     QLineEdit *providerEdit = new QLineEdit(&dialog);
-    providerEdit->setText("Mistral");
-    providerEdit->setToolTip(tr("The AI provider (e.g., Mistral, OpenAI, Ollama, etc.)"));
+    //providerEdit->setText("Groq");
+    providerEdit->setPlaceholderText("Groq");
+
+    providerEdit->setToolTip(tr("The AI provider (e.g., Gemini, Groq, OpenAI, Ollama, etc.)"));
     QLineEdit *endpointEdit = new QLineEdit(&dialog);
-    endpointEdit->setText("https://api.mistral.ai/v1/chat/completions");
+    //endpointEdit->setText("https://api.mistral.ai/v1/chat/completions");
+    endpointEdit->setPlaceholderText("https://api.groq.com/openai/v1/chat/completions");
+    //endpointEdit->setText("https://api.groq.com/openai/v1/chat/completions");
+
     endpointEdit->setToolTip(tr("The full API URL endpoint for this provider"));
     QLineEdit *apiKeyEdit = new QLineEdit(&dialog);
+    apiKeyEdit->setPlaceholderText("Your API key here...");
     apiKeyEdit->setEchoMode(QLineEdit::Password);
     apiKeyEdit->setToolTip(tr("API key for authentication. MUST BE PROVIDED! (may not be needed for local models like Ollama)"));
     QLineEdit *modelNameEdit = new QLineEdit(&dialog);
 
-    modelNameEdit->setText("mistral-medium");
+    //modelNameEdit->setText("mistral-medium");
+    modelNameEdit->setPlaceholderText("openai/gpt-oss-120b");
+    //modelNameEdit->setText("openai/gpt-oss-120b");
+
     modelNameEdit->setToolTip(tr("The specific model to use (e.g., mistral-medium, gpt-4, llama3)"));
     QDoubleSpinBox *tempSpin = new QDoubleSpinBox(&dialog);
     tempSpin->setRange(0.0, 2.0);
@@ -277,10 +278,9 @@ void ModelSelectorDialog::showEditDialog(Model *model)
                             "Keep 0.70 for best results"));
     QSpinBox *maxTokensSpin = new QSpinBox(&dialog);
     maxTokensSpin->setRange(1, 100000);
-    maxTokensSpin->setValue(4096);
+    maxTokensSpin->setValue(8192);
     maxTokensSpin->setToolTip(tr("Maximum number of tokens in the response\n"
-                                 "Keep 4096 for Mistral"));
-    // If editing, populate fields
+                                 "8192 should be sufficient"));
     if (model) {
         nameEdit->setText(model->name);
         providerEdit->setText(model->provider);
@@ -306,21 +306,18 @@ void ModelSelectorDialog::showEditDialog(Model *model)
     connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-    // Validate on accept
     connect(&dialog, &QDialog::accepted, [&]() {
         QString newName = nameEdit->text().trimmed();
         QString newProvider = providerEdit->text().trimmed();
         QString newEndpoint = endpointEdit->text().trimmed();
         QString newModelName = modelNameEdit->text().trimmed();
 
-        // Check each required field
         if (newName.isEmpty()) {
             QMessageBox::warning(&dialog, tr("Invalid Friendly Name"), tr("Model friendly name cannot be empty."));
             dialog.reject();
             return;
         }
 
-        // Check uniqueness
         if (modelNameExists(newName, model ? model->name : QString())) {
             QMessageBox::warning(&dialog, tr("Duplicate Friendly Name"), tr("A model with this friendly name already exists."));
             dialog.reject();
@@ -345,7 +342,6 @@ void ModelSelectorDialog::showEditDialog(Model *model)
             return;
         }
 
-        // Create or update model
         Model updatedModel;
         updatedModel.name = newName;
         updatedModel.provider = providerEdit->text().trimmed();
@@ -356,13 +352,11 @@ void ModelSelectorDialog::showEditDialog(Model *model)
         updatedModel.maxTokens = maxTokensSpin->value();
 
         if (model) {
-            // Editing: replace existing
             *model = updatedModel;
             if (model->name == m_activeModel) {
                             emit activeModelChanged(m_activeModel);
                         }
         } else {
-            // Adding: append to vector
             m_models.append(updatedModel);
         }
 

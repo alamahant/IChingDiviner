@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 - 2026-10-19
+
+### New Features
+- **Display Scaling & Font Size Settings** – Adjust display scaling and font size via the menubar under **Settings**.
+- **Improved AI Actions Appearance** – Refined the visual appearance of AI Actions in the menubar.
+
+---
+
 ## 1.0.4 - 2026-06-14
 
 ### New Features

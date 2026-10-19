@@ -19,6 +19,13 @@ int tarotLabelWidth = 300;  // def 300
 int mandalaLabelHeight = 350; //def 350
 int mandalaLabelWidth = 350; // def 350
 
+#ifdef Q_OS_WIN
+    const qreal DEFAULTFONTSIZE = 11;
+#else
+    const qreal DEFAULTFONTSIZE = 12;
+#endif
+qreal FONTSIZE = DEFAULTFONTSIZE;
+
 
 }
 bool activeModelLoaded = false;

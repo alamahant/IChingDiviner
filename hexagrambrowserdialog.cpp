@@ -67,7 +67,13 @@ void HexagramBrowserDialog::setupGrid()
         QPushButton *button = new QPushButton(buttonText, this);
 
         // Override global button height for hexagram grid
+
+#ifndef FLATPAK_BUILD
         button->setFixedSize(65, 65);
+#else
+        button->setFixedSize(70, 70);
+
+#endif
         button->setProperty("hexNumber", hexNumber);
 
         applyButtonStyle(button, false);
@@ -120,13 +126,15 @@ void HexagramBrowserDialog::applyButtonStyle(QPushButton* button, bool selected)
 {
     if (!button) return;
 
+#ifndef FLATPAK_BUILD
+
     QString baseStyle =
         "QPushButton {"
         "    font-size: 13px;"
-        "    min-height: 55px;"
-        "    max-height: 55px;"
-        "    min-width: 55px;"
-        "    max-width: 55px;"
+        "    min-height: 65px;"
+        "    max-height: 65px;"
+        "    min-width: 65px;"
+        "    max-width: 65px;"
         "    padding: 2px;"
         "    background-color: #2a2a2a;"  // Default dark gray background
         "    border: 1px solid #555;"
@@ -137,7 +145,25 @@ void HexagramBrowserDialog::applyButtonStyle(QPushButton* button, bool selected)
         "    font-weight: bold;"
         "    border: 1px solid #6ea8dc;"
         "}";
-
+#else
+    QString baseStyle =
+        "QPushButton {"
+        "    font-size: 13px;"
+        "    min-height: 70px;"
+        "    max-height: 70px;"
+        "    min-width: 70px;"
+        "    max-width: 70px;"
+        "    padding: 2px;"
+        "    background-color: #2a2a2a;"  // Default dark gray background
+        "    border: 1px solid #555;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #3a6ea5;"
+        "    font-size: 26px;"
+        "    font-weight: bold;"
+        "    border: 1px solid #6ea8dc;"
+        "}";
+#endif
     if (selected) {
         button->setStyleSheet(baseStyle +
             "QPushButton {"

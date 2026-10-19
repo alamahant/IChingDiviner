@@ -16,6 +16,8 @@ namespace Constants {
     extern int tarotLabelWidth;;
     extern int mandalaLabelHeight;
     extern int mandalaLabelWidth;;
+    extern const qreal DEFAULTFONTSIZE;
+    extern qreal FONTSIZE;
 
 }
 extern bool activeModelLoaded;

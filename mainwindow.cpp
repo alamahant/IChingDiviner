@@ -29,6 +29,8 @@
 #include<QFontDatabase>
 #include"journalmanager.h"
 #include"socialsharedialog.h"
+#include<QInputDialog>
+#include<QSpinBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     , journalDialog(new JournalDialog(this))
     , m_socialShare(new SocialShare(this))
     , hexBrowser(new HexagramBrowserDialog(iching, this))
+
 
 {
     setWindowTitle("I-Ching Diviner");
@@ -84,11 +87,22 @@ MainWindow::MainWindow(QWidget *parent)
       hexBrowserButton->setChecked(false);
   });
 
+    setupHexZoomPopup();
+    QSettings s;
+    if (Constants::FONTSIZE > 0.0) {
+        QFont appFont = qApp->font();
+        appFont.setPointSizeF(Constants::FONTSIZE);
+        qApp->setFont(appFont);
+    } else {
+        Constants::FONTSIZE = Constants::DEFAULTFONTSIZE;
+    }
 }
 
 MainWindow::~MainWindow()
 {
     delete iching;
+    if (m_hexZoomPopup) delete m_hexZoomPopup;
+    if (m_hexHoverTimer) delete m_hexHoverTimer;
 }
 
 
@@ -185,7 +199,7 @@ void MainWindow::setupUI()
     sourceLayout->addLayout(sourceLabelLayout);
 
     sourceHexagramTarotLabel = new QLabel("IChing Card");
-
+    sourceHexagramTarotLabel->installEventFilter(this);
     if(isTarotMode){
     sourceHexagramTarotLabel->setFixedSize(Constants::tarotLabelWidth, Constants::tarotLabelHeight);
     }else{
@@ -215,6 +229,7 @@ void MainWindow::setupUI()
     modifiedLayout->addLayout(modifiedLabelLayout);
 
     modifiedHexagramTarotLabel = new QLabel("IChing Card");
+    modifiedHexagramTarotLabel->installEventFilter(this);
 
 
     if(isTarotMode){
@@ -1422,8 +1437,138 @@ void MainWindow::createMenus()
     checkModelAction->setIcon(QIcon::fromTheme("dialog-information"));
     //
     settingsMenu->addSeparator();
+    QAction* aiModelInfoAction = new QAction("AI Model Info Guide", this);
+    connect(aiModelInfoAction, &QAction::triggered, this, &MainWindow::showAIConfigGuide);
+    settingsMenu->addAction(aiModelInfoAction);
     //
+    //
+    settingsMenu->addSeparator();
+    QAction* scaleAction = settingsMenu->addAction("Set &Scale...");
+    scaleAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+    connect(scaleAction, &QAction::triggered, this, [this]() {
+        QSettings settings;
+        bool ok = false;
+        double current = settings.value("ui/scaleFactor", 1.0).toDouble();
 
+        double factor = QInputDialog::getDouble(
+            this, tr("UI Scale"),
+            tr("Scale factor (e.g. 0.9, 1.0, 1.1, 1.25):"),
+            current,          // initial value
+            0.5,              // min
+            3.0,              // max
+            2,                // decimals shown
+            &ok,
+            Qt::WindowFlags(),
+            0.05);             // ← step
+
+        if (!ok) return;
+
+        settings.setValue("ui/scaleFactor", factor);
+        settings.sync();
+
+        QMessageBox msg(this);
+        msg.setWindowTitle(tr("Restart Required"));
+        msg.setIcon(QMessageBox::Information);
+        msg.setText(tr("Please restart the application to apply the new scale."));
+        msg.setInformativeText(tr(
+            "If the new scale makes the app unusable, delete the settings file:\n\n%1\n\n"
+            "Note: this will reset all user-defined settings.")
+            .arg(QSettings().fileName()));
+
+
+        QPushButton *copyBtn   = msg.addButton(tr("Copy Command"), QMessageBox::ActionRole);
+        QPushButton *cancelBtn = msg.addButton(tr("Cancel"), QMessageBox::RejectRole);
+        QPushButton *okBtn     = msg.addButton(tr("OK"), QMessageBox::AcceptRole);
+
+        for (;;) {
+            msg.exec();
+            if (msg.clickedButton() != copyBtn)
+                break;
+
+        #ifdef Q_OS_WIN
+            const QString cmd = QString("Remove-Item \"%1\"").arg(QSettings().fileName());
+        #else
+            const QString cmd = QString("rm \"%1\"").arg(QSettings().fileName());
+        #endif
+            QGuiApplication::clipboard()->setText(cmd);
+
+            msg.setInformativeText(tr(
+                "Command copied to clipboard:\n\n%1\n\n"
+                "If the new scale makes the app unusable, delete the settings file above.")
+                .arg(cmd));
+        }
+
+        if (msg.clickedButton() == okBtn)
+            qApp->quit();
+
+    });
+    //
+    settingsMenu->addSeparator();
+    QAction* fontAction = settingsMenu->addAction("Set &Font Size...");
+    fontAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
+    connect(fontAction, &QAction::triggered, this, [this]() {
+        QSettings settings;
+
+        QMessageBox box(this);
+        box.setWindowTitle(tr("Font Size"));
+        box.setIcon(QMessageBox::NoIcon);
+        box.setText(tr("Point size (e.g. 9, 10, 12, 14):"));
+
+        QSpinBox *spin = new QSpinBox(&box);
+        spin->setRange(6, 32);
+        spin->setSingleStep(1);
+
+        double current = settings.value("ui/fontSize", 0.0).toDouble();
+        if (current <= 0.0)
+            current = qApp->font().pointSizeF();
+        spin->setValue(qRound(current));
+
+        if (auto *grid = qobject_cast<QGridLayout*>(box.layout())) grid->addWidget(spin, 1, 1);
+        QPushButton *okBtn     = box.addButton(QMessageBox::Ok);
+        QPushButton *cancelBtn = box.addButton(QMessageBox::Cancel);
+        QPushButton *defaultBtn = box.addButton(tr("Default"), QMessageBox::ResetRole);
+        box.setDefaultButton(okBtn);
+
+        box.exec();
+
+        qreal size;
+        if (box.clickedButton() == defaultBtn) {
+            size = Constants::DEFAULTFONTSIZE;
+        } else if (box.clickedButton() == okBtn) {
+            size = spin->value();
+        } else {
+            return;   // Cancel
+        }
+
+        Constants::FONTSIZE = size;
+        settings.setValue("ui/fontSize", size);
+        settings.sync();
+
+        QFont f = qApp->font();
+        f.setPointSizeF(size);
+        qApp->setFont(f);
+        qApp->setStyleSheet(qApp->styleSheet());
+    });
+
+
+    settingsMenu->addSeparator();
+    QAction* resetAction = settingsMenu->addAction("&Reset Settings");
+    connect(resetAction, &QAction::triggered, this, [this]() {
+        if (QMessageBox::question(this, tr("Reset Settings"),
+                tr("Delete all settings and restart?")) == QMessageBox::Yes) {
+            QSettings s;
+            s.clear();
+            s.sync();
+
+            if (QProcess::startDetached(QCoreApplication::applicationFilePath(),
+                                        QStringList())) {
+                QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+            }
+        }
+    });
+    //
+    //
+    settingsMenu->addSeparator();
     shouldFreezeUI = settings.value("freezeUI", false).toBool(); // Default to false
 
     QAction *freezeUIAction = new QAction("Freeze UI during AI processing", this);
@@ -1739,22 +1884,16 @@ void MainWindow::configureAIModels()
 {
     ModelSelectorDialog dlg(this);
 
-    // Connect to activeModelChanged signal
-       connect(&dlg, &ModelSelectorDialog::activeModelChanged, this, [this](const QString &modelName) {
-           // When active model changes, reload it in aiManager
-           // This will update GlobalFlags::activeModelLoaded internally
-           aiManager->loadActiveModel();
+   connect(&dlg, &ModelSelectorDialog::activeModelChanged, this, [this](const QString &modelName) {
+       aiManager->loadActiveModel();
+   });
 
-           // Optional: Show status message
-           //statusBar()->showMessage(tr("Active model changed to: %1").arg(modelName), 3000);
-       });
+   dlg.exec();
 
-       dlg.exec();  // Just show the dialog, no need to process results
-
-        aiManager->loadActiveModel();
-
-       // The dialog saves changes to QSettings automatically
-       // The aiManager class will read the active model from QSettings when needed
+    aiManager->loadActiveModel();
+    QMessageBox::information(this, tr("AI Model Configuration"),
+                                     tr("Any changes will take effect on the next restart of %1.")
+                                 .arg(QApplication::applicationName()));
 }
 
 void MainWindow::gatAiInterpretation()
@@ -1985,6 +2124,7 @@ bool MainWindow::downloadDataset()
         }
     }
 
+    /*
     // Step 1: Download with wget
     int wgetExit = QProcess::execute("wget", QStringList()
         << "-q" << "-O" << tempPath
@@ -1995,16 +2135,63 @@ bool MainWindow::downloadDataset()
             "Failed to download dataset. Please check your internet connection.");
         return false;
     }
+    */
 
-    // Step 2: Remove "export default" with sed
-    int sedExit = QProcess::execute("sed", QStringList()
-        << "-i" << "s/^\\s*export\\s*default\\s*//" << tempPath);
 
-    if (sedExit != 0) {
-        QMessageBox::warning(this, "Processing Failed",
-            "Failed to process the downloaded file.");
+    // Step 1: Download with curl
+    #ifdef Q_OS_WIN
+        const QString curlExe = "curl.exe";
+    #else
+        const QString curlExe = "curl";
+    #endif
+
+    int curlExit = QProcess::execute(curlExe, QStringList()
+        << "-L"                                          // follow redirects
+        << "-f"                                          // fail on HTTP errors
+        << "-s"                                          // silent (no progress)
+        << "-o" << tempPath
+        << "https://raw.githubusercontent.com/adamblvck/iching-wilhelm-dataset/master/data/iching_wilhelm_translation.js");
+
+    if (curlExit != 0) {
+        QMessageBox::warning(this, "Download Failed",
+            "Failed to download dataset. Please check your internet connection.");
         return false;
     }
+
+    // Step 2: Remove "export default" with sed
+   // int sedExit = QProcess::execute("sed", QStringList()
+     //   << "-i" << "s/^\\s*export\\s*default\\s*//" << tempPath);
+
+    //if (sedExit != 0) {
+      //  QMessageBox::warning(this, "Processing Failed",
+        //    "Failed to process the downloaded file.");
+        //return false;
+    //}
+
+    // Step 2: Remove "export default" from the downloaded file
+    #ifdef Q_OS_WIN
+        // Windows: use PowerShell (no sed available by default)
+        QString psScript = QString(
+            "$c = Get-Content -Path '%1' -Raw; "
+            "$c = $c -replace '(?m)^\\s*export\\s*default\\s*', ''; "
+            "Set-Content -Path '%1' -Value $c -NoNewline"
+        ).arg(QString(tempPath).replace("'", "''"));
+
+        int procExit = QProcess::execute("powershell.exe",
+            QStringList() << "-NoProfile"
+                          << "-Command" << psScript);
+    #else
+        // Linux/macOS: use sed
+        int procExit = QProcess::execute("sed", QStringList()
+            << "-i" << "s/^\\s*export\\s*default\\s*//" << tempPath);
+    #endif
+
+        if (procExit != 0) {
+            QMessageBox::warning(this, "Processing Failed",
+                "Failed to process the downloaded file.");
+            return false;
+        }
+
 
     // Step 3: Rename to final
     if (!QFile::rename(tempPath, finalPath)) {
@@ -2353,7 +2540,7 @@ void MainWindow::showDeckImportGuide()
 
 void MainWindow::showDatasetGuide()
 {
-    QString guide =
+    QString guide = QString(
         "<h2>Downloading Hexagram Meanings Dataset</h2>"
 
         "<p>The Wilhelm translation of the I-Ching provides the rich interpretations "
@@ -2377,14 +2564,8 @@ void MainWindow::showDatasetGuide()
 
         "<h3>After Download:</h3>"
         "<p>The meanings will automatically appear in the right dock. "
-        "You only need to download once - the file is saved locally.</p>"
+        "You only need to download once - the file is saved locally at %1</p>").arg(Constants::appDirPath);
 
-        "<h3>Manual Download (if needed):</h3>"
-        "<p>You can also download the JSON file manually from:<br>"
-        "<a href='https://raw.githubusercontent.com/adamblvck/iching-wilhelm-dataset/master/data/iching_wilhelm_translation.js'>"
-        "https://github.com/adamblvck/iching-wilhelm-dataset</a></p>"
-        "<p>Save it as <code>iching.json</code> in:<br>"
-        "<code>" + Constants::appDirPath + "</code></p>";
 
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Download Hexagram Meanings");
@@ -2409,125 +2590,8 @@ void MainWindow::showDatasetGuide()
     }
 }
 
-void MainWindow::showAIConfigGuide()
-{
-    QDialog dialog(this);
-    dialog.setWindowTitle("AI Interpretation Guide");
-    dialog.resize(600, 500);
 
-    QVBoxLayout *layout = new QVBoxLayout(&dialog);
 
-    QTextEdit *textEdit = new QTextEdit(&dialog);
-    textEdit->setReadOnly(true);
-    textEdit->setHtml(
-        "<h2>AI-Powered I-Ching Interpretations</h2>"
-
-        "<p>The app can use AI models to provide rich, contextual interpretations of your divinations. "
-        "You can connect to various AI providers by configuring them in the Model Selector.</p>"
-
-        "<h3>Getting Started:</h3>"
-        "<ol>"
-        "<li><b>Open AI Model Selector:</b> Tools → AI Model Selector</li>"
-        "<li><b>Add a new model:</b> Click 'Add' and fill in the details</li>"
-        "<li><b>Set as active:</b> Select the model and click 'Set Active'</li>"
-        "<li><b>Get interpretations:</b> Complete a hexagram and click 'Get AI Interpretation'</li>"
-        "</ol>"
-
-        "<h3>Compatible Providers (OpenAI-compatible API format):</h3>"
-        "<table width='100%' border='1' cellpadding='5'>"
-        "<tr><th>Provider</th><th>Endpoint</th><th>Example Model</th><th>API Key</th></tr>"
-
-        "<tr><td><b>Groq</b></td>"
-        "<td><code>https://api.groq.com/openai/v1/chat/completions</code></td>"
-        "<td><code>llama-3.3-70b-versatile</code></td>"
-        "<td>gsk_... (free tier)</td></tr>"
-
-        "<tr><td><b>Mistral</b></td>"
-        "<td><code>https://api.mistral.ai/v1/chat/completions</code></td>"
-        "<td><code>mistral-medium</code></td>"
-        "<td>Free trial</td></tr>"
-
-        "<tr><td><b>OpenAI</b></td>"
-        "<td><code>https://api.openai.com/v1/chat/completions</code></td>"
-        "<td><code>gpt-4</code> or <code>gpt-3.5-turbo</code></td>"
-        "<td>Paid access</td></tr>"
-
-        "<tr><td><b>Ollama (local)</b></td>"
-        "<td><code>http://localhost:11434/v1/chat/completions</code></td>"
-        "<td><code>llama3</code> or <code>mistral</code></td>"
-        "<td><i>None</i></td></tr>"
-
-        "<tr><td><b>Together AI</b></td>"
-        "<td><code>https://api.together.xyz/v1/chat/completions</code></td>"
-        "<td><code>mistralai/Mixtral-8x7B-Instruct</code></td>"
-        "<td>Required</td></tr>"
-
-        "<tr><td><b>DeepSeek</b></td>"
-        "<td><code>https://api.deepseek.com/v1/chat/completions</code></td>"
-        "<td><code>deepseek-chat</code></td>"
-        "<td>Required</td></tr>"
-        "</table>"
-
-        "<h3>Configuration Tips:</h3>"
-        "<ul>"
-        "<li><b>Friendly Name:</b> Any name to identify this config (e.g., 'My Groq Llama')</li>"
-        "<li><b>Provider:</b> Just for reference (e.g., 'Groq', 'OpenAI')</li>"
-        "<li><b>Endpoint URL:</b> The full API URL from the table above</li>"
-        "<li><b>API Key:</b> Get from provider's website (except Ollama)</li>"
-        "<li><b>Model Name:</b> The specific model identifier from the provider</li>"
-        "<li><b>Temperature:</b> Keep at 0.7 for balanced interpretations</li>"
-        "<li><b>Max Tokens:</b> 4096 is usually sufficient</li>"
-        "</ul>"
-
-        "<h3>Finding Model Names and Endpoints:</h3>"
-        "<p>If you're unsure about which model to use or need the exact endpoint URL:</p>"
-        "<ul>"
-        "<li><b>Ask AI assistants</b> like ChatGPT, Claude: "
-        "\"What's the API endpoint and available models for [Provider]?\"</li>"
-        "<li><b>Check provider documentation</b> - most have clear API reference pages</li>"
-        "<li><b>Search online:</b> '[Provider] API documentation'</li>"
-        "</ul>"
-
-        "<h3>Recommended Settings by Provider:</h3>"
-        "<ul>"
-        "<li><b>Groq:</b> <code>llama-3.3-70b-versatile</code> for best quality</li>"
-        "<li><b>Mistral:</b> <code>mistral-medium</code> works well</li>"
-        "<li><b>OpenAI:</b> <code>gpt-4</code> best results, <code>gpt-3.5-turbo</code> faster/cheaper</li>"
-        "<li><b>Ollama:</b> Install Ollama first, then pull <code>llama3</code> or <code>mistral</code></li>"
-        "</ul>"
-
-        "<h3 style='color: #ff6b6b;'>Important Notes:</h3>"
-        "<ul>"
-        "<li><b>API keys are stored locally</b> in your system's secure settings</li>"
-        "<li><b>Not compatible:</b> Claude (Anthropic), Gemini (Google) - different API formats</li>"
-        "<li><b>Restart app</b> after configuring your first model</li>"
-        "<li><b>Hexagram data and question</b> are sent to the configured AI service</li>"
-        "</ul>"
-    );
-
-    layout->addWidget(textEdit);
-
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    QPushButton *openConfigButton = new QPushButton("Open Model Selector", &dialog);
-    QPushButton *closeButton = new QPushButton("Close", &dialog);
-
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(openConfigButton);
-    buttonLayout->addWidget(closeButton);
-
-    layout->addLayout(buttonLayout);
-
-    connect(openConfigButton, &QPushButton::clicked, &dialog, [this, &dialog]() {
-        dialog.accept();
-        ModelSelectorDialog dlg(this);
-        dlg.exec();
-        aiManager->loadActiveModel();
-    });
-
-    connect(closeButton, &QPushButton::clicked, &dialog, &QDialog::reject);
-
-    dialog.exec();
-}
 
 bool MainWindow::loadChineseFont()
 {
@@ -2600,6 +2664,34 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             return true; // Event consumed
         }
     }
+
+    // Handle hexagram image hover for zoom popup
+    if (obj == sourceHexagramTarotLabel || obj == modifiedHexagramTarotLabel) {
+        if (event->type() == QEvent::Enter) {
+            // Mouse entered a hexagram label
+            QLabel* hexLabel = qobject_cast<QLabel*>(obj);
+            if (hexLabel && !hexLabel->pixmap().isNull()) {
+                m_hoveredHexLabel = hexLabel;
+                m_hexHoverTimer->start();
+            }
+            return true;
+        }
+        else if (event->type() == QEvent::Leave) {
+            // Mouse left a hexagram label
+            m_hexHoverTimer->stop();
+            m_hoveredHexLabel = nullptr;
+            hideHexZoomPopup();
+            return true;
+        }
+        else if (event->type() == QEvent::MouseMove) {
+            // Update popup position if visible
+            //if (m_hexZoomPopup && m_hexZoomPopup->isVisible()) {
+               // updateHexPopupPosition(QCursor::pos());
+            //}
+            return true;
+        }
+    }
+
     return QMainWindow::eventFilter(obj, event);
 }
 
@@ -2795,4 +2887,296 @@ void MainWindow::onHexagramSelectedFromBrowser(int hexagramNumber)
 
     meaningTextEdit->setHtml(html);
     meaningTextEdit->moveCursor(QTextCursor::Start);
+}
+
+
+void MainWindow::showHexZoomPopup()
+{
+    if (!m_hoveredHexLabel) return;
+
+    // Determine which label and get the hexagram number
+    int hexagramNumber = 0;
+    if (m_hoveredHexLabel == sourceHexagramTarotLabel) {
+        HexagramInfo sourceInfo = iching->getSourceHexagram();
+        if (!sourceInfo.number.isEmpty()) {
+            hexagramNumber = sourceInfo.number.toInt();
+        }
+    } else if (m_hoveredHexLabel == modifiedHexagramTarotLabel) {
+        HexagramInfo modifiedInfo = iching->getModifiedHexagram();
+        if (!modifiedInfo.number.isEmpty()) {
+            hexagramNumber = modifiedInfo.number.toInt();
+        }
+    }
+
+    if (hexagramNumber == 0) return;
+
+    QPixmap zoomed;
+
+    if (isTarotMode) {
+        // Load the original tarot card image
+        QString decksPath = Constants::decksDirPath;
+        QString png = QString(decksPath + "/%1/%2.png")
+                         .arg(currentDeck)
+                         .arg(hexagramNumber - 1, 2, 10, QChar('0'));
+        QString jpg = QString(decksPath + "/%1/%2.jpg")
+                         .arg(currentDeck)
+                         .arg(hexagramNumber - 1, 2, 10, QChar('0'));
+        QString filename = QFile::exists(png) ? png : jpg;
+
+        if (!QFile::exists(filename)) return;
+
+        QPixmap original(filename);
+        if (original.isNull()) return;
+
+        // Show at original size, but limit if too large
+        QSize maxSize = QApplication::primaryScreen()->availableSize() * 0.7;
+        if (original.width() > maxSize.width() || original.height() > maxSize.height()) {
+            zoomed = original.scaled(maxSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        } else {
+            zoomed = original;
+        }
+    } else {
+        QPixmap originalPixmap = m_hoveredHexLabel->pixmap();
+        if (originalPixmap.isNull()) return;
+
+        zoomed = originalPixmap.scaled(
+            originalPixmap.width() * 2,
+            originalPixmap.height() * 2,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+
+        QSize maxSize = QApplication::primaryScreen()->availableSize() * 0.7;
+        if (zoomed.width() > maxSize.width() || zoomed.height() > maxSize.height()) {
+            zoomed = zoomed.scaled(maxSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+    }
+
+    m_hexZoomPopup->setPixmap(zoomed);
+    m_hexZoomPopup->adjustSize();
+
+    // Position near cursor
+    //if(isTarotMode) updateHexPopupPosition(QCursor::pos());
+    updateHexPopupPosition(QCursor::pos());
+
+    m_hexZoomPopup->show();
+    m_hexZoomPopup->raise();
+}
+
+
+
+void MainWindow::setupHexZoomPopup()
+{
+    // Create zoom popup (hidden by default)
+    m_hexZoomPopup = new QLabel(nullptr, Qt::ToolTip | Qt::FramelessWindowHint);
+    m_hexZoomPopup->setStyleSheet(
+        "border: 3px solid #ffd700; "
+        "border-radius: 12px; "
+        "background: #1a1a1a; "
+        "padding: 8px;"
+    );
+    m_hexZoomPopup->setAlignment(Qt::AlignCenter);
+    m_hexZoomPopup->hide();
+
+    // Create timer for hover delay
+    m_hexHoverTimer = new QTimer(this);
+    m_hexHoverTimer->setSingleShot(true);
+    m_hexHoverTimer->setInterval(300); // 300ms delay
+
+    connect(m_hexHoverTimer, &QTimer::timeout, this, &MainWindow::showHexZoomPopup);
+}
+
+
+void MainWindow::updateHexPopupPosition(const QPoint& cursorPos)
+{
+    if (!m_hexZoomPopup) return;
+
+    QSize popupSize = m_hexZoomPopup->sizeHint();
+    QRect screen = QApplication::primaryScreen()->availableGeometry();
+    QPoint pos;
+    bool positioned = false;
+
+    // Strategy 1: Try 4 corners around cursor
+    QPoint positions[] = {
+        cursorPos + QPoint(15, 15),                    // Bottom-right
+        cursorPos + QPoint(-15 - popupSize.width(), 15), // Bottom-left
+        cursorPos + QPoint(15, -15 - popupSize.height()), // Top-right
+        cursorPos + QPoint(-15 - popupSize.width(), -15 - popupSize.height()) // Top-left
+    };
+
+    for (const QPoint& attempt : positions) {
+        if (attempt.x() >= screen.left() &&
+            attempt.y() >= screen.top() &&
+            attempt.x() + popupSize.width() <= screen.right() &&
+            attempt.y() + popupSize.height() <= screen.bottom()) {
+            pos = attempt;
+            positioned = true;
+            break;
+        }
+    }
+
+    // Strategy 2: If no corner works, clamp with minimum offset
+    if (!positioned) {
+        int offset = 5;
+        pos = cursorPos + QPoint(offset, offset);
+        pos.setX(qBound(screen.left() + offset, pos.x(), screen.right() - popupSize.width() - offset));
+        pos.setY(qBound(screen.top() + offset, pos.y(), screen.bottom() - popupSize.height() - offset));
+    }
+
+    m_hexZoomPopup->move(pos);
+}
+
+void MainWindow::hideHexZoomPopup()
+{
+    if (m_hexZoomPopup) {
+        m_hexZoomPopup->hide();
+    }
+}
+
+void MainWindow::showAIConfigGuide()
+{
+    QDialog *dialog = new QDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle("AI Interpretation Guide");
+    dialog->resize(800, 600);
+
+    QVBoxLayout *layout = new QVBoxLayout(dialog);
+
+    QTextEdit *textEdit = new QTextEdit(dialog);
+    textEdit->setReadOnly(true);
+    textEdit->setHtml(
+                QString(
+        "<h2>AI-Powered %1 Interpretations</h2>"
+
+        "<p>The app can use AI models to provide rich, contextual interpretations of your divinations. "
+        "You can connect to various AI providers by configuring them in the Model Selector.</p>"
+
+        "<div style='border-left: 4px solid #d9534f; padding: 12px; margin: 16px 0;>"
+        "<p style='margin: 0 0 8px 0;'><strong>⚠️ Important Disclaimer</strong></p>"
+        "<p style='margin: 0;'>The AI models listed here are provided for <strong>reference only</strong>. "
+        "Model names, availability, capabilities, and rate limits are set by each provider and may change at any time without notice. "
+        "Some models that were previously free may become paid, be deprecated, or be removed entirely. "
+        "Please verify the current details directly with each AI provider before configuring your model.</p>"
+        "</div>"
+
+        "<h3>Getting Started:</h3>"
+        "<ol>"
+        "<li><b>Open AI Model Selector:</b> Tools → AI Model Selector</li>"
+        "<li><b>Add a new model:</b> Click 'Add' and fill in the details</li>"
+        "<li><b>Set as active:</b> Select the model and click 'Set Active'</li>"
+        "<li><b>Get interpretations:</b> Complete a hexagram and click 'Get AI Interpretation'</li>"
+        "</ol>"
+
+        "<h3>Compatible Providers (OpenAI-compatible API format):</h3>"
+        "<table width='100%' border='1' cellpadding='5'>"
+        "<tr><th>Provider</th><th>Endpoint</th><th>Example Model</th><th>API Key</th></tr>"
+
+        "<tr><td><b>Groq</b></td>"
+        "<td><code>https://api.groq.com/openai/v1/chat/completions</code></td>"
+        "<td><code>openai/gpt-oss-120b</code></td>"
+        "<td>gsk_... (free tier)</td></tr>"
+
+        "<tr><td><b>Mistral</b></td>"
+        "<td><code>https://api.mistral.ai/v1/chat/completions</code></td>"
+        "<td><code>mistral-medium</code></td>"
+        "<td>Free tier discontinued</td></tr>"
+
+
+        "<tr><td><b>Gemini</b></td>"
+        "<td><code>https://generativelanguage.googleapis.com/v1beta/openai/chat/completions</code></td>"
+        "<td><code>gemini-3.5-flash</code></td>"
+        "<td>Free trial</td></tr>"
+
+
+        "<tr><td><b>OpenAI</b></td>"
+        "<td><code>https://api.openai.com/v1/chat/completions</code></td>"
+        "<td><code>gpt-4</code> or <code>gpt-3.5-turbo</code></td>"
+        "<td>Paid access</td></tr>"
+
+        "<tr><td><b>Ollama (local)</b></td>"
+        "<td><code>http://localhost:11434/v1/chat/completions</code></td>"
+        "<td><code>llama3</code> or <code>mistral</code></td>"
+        "<td><i>None</i></td></tr>"
+
+        "<tr><td><b>Together AI</b></td>"
+        "<td><code>https://api.together.xyz/v1/chat/completions</code></td>"
+        "<td><code>mistralai/Mixtral-8x7B-Instruct</code></td>"
+        "<td>Required</td></tr>"
+
+        "<tr><td><b>DeepSeek</b></td>"
+        "<td><code>https://api.deepseek.com/v1/chat/completions</code></td>"
+        "<td><code>deepseek-chat</code></td>"
+        "<td>Required</td></tr>"
+        "</table>"
+
+        "<h3>Configuration Tips:</h3>"
+        "<ul>"
+        "<li><b>Friendly Name:</b> Any name to identify this config (e.g., 'My Groq Llama')</li>"
+        "<li><b>Provider:</b> Just for reference (e.g., 'Groq', 'OpenAI')</li>"
+        "<li><b>Endpoint URL:</b> The full API URL from the table above</li>"
+        "<li><b>API Key:</b> Get from provider's website (except Ollama)</li>"
+        "<li><b>Model Name:</b> The specific model identifier from the provider</li>"
+        "<li><b>Temperature:</b> Keep at 0.7 for balanced interpretations</li>"
+        "<li><b>Max Tokens:</b> 4096 is usually sufficient</li>"
+        "</ul>"
+
+        "<h3>Finding Model Names and Endpoints:</h3>"
+        "<p>If you're unsure about which model to use or need the exact endpoint URL:</p>"
+        "<ul>"
+        "<li><b>Ask AI assistants</b> like ChatGPT, Claude: "
+        "\"What's the API endpoint and available models for [Provider]?\"</li>"
+        "<li><b>Check provider documentation</b> - most have clear API reference pages</li>"
+        "<li><b>Search online:</b> '[Provider] API documentation'</li>"
+        "</ul>"
+
+        "<h3>Recommended Settings by Provider:</h3>"
+        "<ul>"
+        "<li><b>Groq:</b> <code>openai/gpt-oss-120b</code> for best quality</li>"
+        "<li><b>Mistral:</b> <code>mistral-medium</code> works well</li>"
+        "<li><b>Gemini(Google):</b> <code>gemini-3.5-flash</code> works well</li>"
+
+        "<li><b>OpenAI:</b> <code>gpt-4</code> best results, <code>gpt-3.5-turbo</code> faster/cheaper</li>"
+        "<li><b>Ollama:</b> Install Ollama first, then pull <code>llama3</code> or <code>mistral</code></li>"
+        "</ul>"
+
+        "<h3>Provider Sign-Up Links:</h3>"
+        "<ul>"
+        "<li><b>Groq:</b> <a href='https://groq.com/'>https://groq.com/</a> — free, recommended for testing</li>"
+        "<li><b>Mistral:</b> <a href='https://console.mistral.ai/'>https://console.mistral.ai/</a> — now a paid service</li>"
+        "<li><b>Gemini (Google):</b> <a href='https://aistudio.google.com/'>https://aistudio.google.com/</a> — free tier available, may be busy</li>"
+        "<li><b>OpenAI:</b> <a href='https://platform.openai.com/'>https://platform.openai.com/</a> — paid API</li>"
+        "<li><b>Ollama:</b> <a href='https://ollama.com/'>https://ollama.com/</a> — runs locally, no API key needed</li>"
+        "</ul>"
+
+        "<h3 style='color: #ff6b6b;'>Important Notes:</h3>"
+        "<ul>"
+        "<li><b>API keys are stored locally</b> in your system's secure settings</li>"
+        "<li><b>Not compatible:</b> Claude (Anthropic) - different API formats</li>"
+        "<li><b>Restart app</b> after configuring your first model</li>"
+        "<li><b>Hexagram data and question</b> are sent to the configured AI service</li>"
+        "</ul>").arg(QApplication::applicationName())
+    );
+
+    layout->addWidget(textEdit);
+
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    QPushButton *openConfigButton = new QPushButton("Open Model Selector", dialog);
+    QPushButton *closeButton = new QPushButton("Close", dialog);
+
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(openConfigButton);
+    buttonLayout->addWidget(closeButton);
+
+    layout->addLayout(buttonLayout);
+
+    connect(openConfigButton, &QPushButton::clicked, dialog, [this, dialog]() {
+        dialog->accept();
+        ModelSelectorDialog dlg(this);
+        dlg.exec();
+    });
+
+    connect(closeButton, &QPushButton::clicked, dialog, &QDialog::reject);
+
+    dialog->show();
+    dialog->raise();
 }

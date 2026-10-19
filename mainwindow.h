@@ -149,6 +149,8 @@ private slots:
     //social and sharing
     void onShareClicked();
     void onHexagramSelectedFromBrowser(int hexagramNumber);
+    void showHexZoomPopup();
+    void hideHexZoomPopup();
 
 private:
     SocialShare* m_socialShare;
@@ -159,6 +161,14 @@ private:
     // hexagram browser
     HexagramBrowserDialog* hexBrowser = nullptr;
     QPushButton* hexBrowserButton;
+
+    // Zoom popup for hexagram images
+    QLabel* m_hexZoomPopup = nullptr;
+    QTimer* m_hexHoverTimer = nullptr;
+    QLabel* m_hoveredHexLabel = nullptr;
+    void setupHexZoomPopup();
+    void updateHexPopupPosition(const QPoint& cursorPos);
+
 };
 
 #endif // MAINWINDOW_H

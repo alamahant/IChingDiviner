@@ -8,7 +8,12 @@
   <metadata_license>CC0-1.0</metadata_license>
 
 <project_license>GPL-3.0-or-later</project_license>
+
   <url type="vcs-browser">https://github.com/alamahant/IChingDiviner</url>
+
+  <url type="donation">https://ko-fi.com/alamahant</url>
+
+
   <description>
     <p>
       IChingDiviner is a modern I-Ching divination application that brings the ancient Chinese oracle
@@ -83,6 +88,16 @@
 
 
 <releases>
+
+<release version="1.0.5" date="2026-10-19">
+  <description>
+    <p>Display settings and AI Actions improvements:</p>
+    <ul>
+      <li>Added display scaling and font size settings via menubar - Settings</li>
+      <li>Improved the appearance of AI Actions in menubar</li>
+    </ul>
+  </description>
+</release>
 
 <release version="1.0.4" date="2026-06-14">
   <description>
